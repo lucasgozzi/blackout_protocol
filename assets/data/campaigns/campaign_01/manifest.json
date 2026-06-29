@@ -1,0 +1,15 @@
+{
+  "id": "campaign_01",
+  "title": "Blackout Protocol",
+  "description": "A cidade foi evacuada. Sua equipe tem uma janela de 48 horas antes que a IA de contenção inicie o protocolo de destruição. Recupere os recursos críticos.",
+  "coverArt": "campaign_01_cover",
+  "access": "free",
+  "missionCount": 3,
+  "missionIds": [
+    "c01_m01_fuel_depot",
+    "c01_m02_rescue_scientist",
+    "c01_m03_disable_antenna"
+  ],
+  "storeProductId": "",
+  "version": 1
+}

@@ -1,0 +1,84 @@
+{
+  "weapons": [
+    {
+      "id": "fists",
+      "name": "Punhos",
+      "type": "melee",
+      "minRange": 0, "maxRange": 0,
+      "dice": 1, "hitValue": 5, "damage": 1,
+      "hands": 1, "isNoisy": false, "isConsumable": false
+    },
+    {
+      "id": "combat_knife",
+      "name": "Faca de Combate",
+      "type": "melee",
+      "minRange": 0, "maxRange": 0,
+      "dice": 1, "hitValue": 3, "damage": 1,
+      "hands": 1, "isNoisy": false, "isConsumable": false
+    },
+    {
+      "id": "crowbar",
+      "name": "Pé de Cabra",
+      "type": "melee",
+      "minRange": 0, "maxRange": 0,
+      "dice": 2, "hitValue": 4, "damage": 1,
+      "hands": 1, "isNoisy": false, "isConsumable": false
+    },
+    {
+      "id": "pistol",
+      "name": "Pistola",
+      "type": "ranged",
+      "minRange": 0, "maxRange": 1,
+      "dice": 1, "hitValue": 3, "damage": 1,
+      "hands": 1, "isNoisy": true, "isConsumable": false
+    },
+    {
+      "id": "shotgun",
+      "name": "Escopeta",
+      "type": "ranged",
+      "minRange": 0, "maxRange": 1,
+      "dice": 2, "hitValue": 4, "damage": 1,
+      "hands": 2, "isNoisy": true, "isConsumable": false
+    },
+    {
+      "id": "smg",
+      "name": "Submetralhadora",
+      "type": "ranged",
+      "minRange": 0, "maxRange": 2,
+      "dice": 3, "hitValue": 4, "damage": 1,
+      "hands": 2, "isNoisy": true, "isConsumable": false
+    },
+    {
+      "id": "sniper",
+      "name": "Rifle de Precisão",
+      "type": "ranged",
+      "minRange": 2, "maxRange": 4,
+      "dice": 1, "hitValue": 4, "damage": 2,
+      "hands": 2, "isNoisy": true, "isConsumable": false
+    },
+    {
+      "id": "emp_grenade",
+      "name": "Granada EMP",
+      "type": "ranged",
+      "minRange": 1, "maxRange": 2,
+      "dice": 2, "hitValue": 3, "damage": 2,
+      "hands": 1, "isNoisy": true, "isConsumable": true
+    },
+    {
+      "id": "medkit",
+      "name": "Kit Médico",
+      "type": "support",
+      "minRange": 0, "maxRange": 0,
+      "dice": 0, "hitValue": 0, "damage": 0,
+      "hands": 1, "isNoisy": false, "isConsumable": true
+    },
+    {
+      "id": "armor_vest",
+      "name": "Colete Balístico",
+      "type": "armor",
+      "minRange": 0, "maxRange": 0,
+      "dice": 0, "hitValue": 0, "damage": 0,
+      "hands": 0, "isNoisy": false, "isConsumable": false
+    }
+  ]
+}

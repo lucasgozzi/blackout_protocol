@@ -1,0 +1,182 @@
+{
+  "id": "c01_m01",
+  "tilePixelSize": 200,
+  "tiles": [
+    {
+      "id": "t_start",     "name": "Entrada",              "image": "tile_lab",
+      "gridX": 0, "gridY": 1,
+      "zones": [{ "id": "z_start",     "type": "indoor",     "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_start",     "toTile": "t_corridor",  "toZone": "z_corridor",  "type": "open", "side": "east" },
+        { "fromZone": "z_start",     "toTile": "t_street_w",  "toZone": "z_street_w",  "type": "open", "side": "south" }
+      ],
+      "tags": {},
+      "playerStart": [
+        { "zone": "z_start", "offsetX": 0.25, "offsetY": 0.5 },
+        { "zone": "z_start", "offsetX": 0.5,  "offsetY": 0.5 },
+        { "zone": "z_start", "offsetX": 0.75, "offsetY": 0.5 },
+        { "zone": "z_start", "offsetX": 0.5,  "offsetY": 0.75 }
+      ],
+      "spawnPoints": []
+    },
+    {
+      "id": "t_corridor",  "name": "Corredor",             "image": "tile_corridor",
+      "gridX": 1, "gridY": 1,
+      "zones": [{ "id": "z_corridor",  "type": "indoor",     "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_corridor",  "toTile": "t_start",     "toZone": "z_start",     "type": "open", "side": "west" },
+        { "fromZone": "z_corridor",  "toTile": "t_server",    "toZone": "z_server",    "type": "door", "side": "north" },
+        { "fromZone": "z_corridor",  "toTile": "t_street_ns", "toZone": "z_street_ns", "type": "open", "side": "east" },
+        { "fromZone": "z_corridor",  "toTile": "t_plaza",     "toZone": "z_plaza",     "type": "open", "side": "south" }
+      ],
+      "tags": {},
+      "spawnPoints": []
+    },
+    {
+      "id": "t_server",    "name": "Sala de Servidores",   "image": "tile_server_room",
+      "gridX": 1, "gridY": 0,
+      "zones": [{ "id": "z_server",    "type": "indoor",     "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_server",    "toTile": "t_corridor",  "toZone": "z_corridor",  "type": "door", "side": "south" }
+      ],
+      "tags": { "z_server": ["datapad_supervisor", "item"] },
+      "spawnPoints": []
+    },
+    {
+      "id": "t_street_ns", "name": "Rua Norte",            "image": "tile_street_ns",
+      "gridX": 2, "gridY": 1,
+      "zones": [{ "id": "z_street_ns", "type": "street",    "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_street_ns", "toTile": "t_corridor",  "toZone": "z_corridor",  "type": "open", "side": "west" },
+        { "fromZone": "z_street_ns", "toTile": "t_checkpoint","toZone": "z_checkpoint","type": "open", "side": "east" },
+        { "fromZone": "z_street_ns", "toTile": "t_crossroads","toZone": "z_crossroads","type": "open", "side": "south" }
+      ],
+      "tags": {},
+      "spawnPoints": ["z_street_ns"]
+
+    },
+    {
+      "id": "t_checkpoint","name": "Checkpoint",           "image": "tile_lab",
+      "gridX": 3, "gridY": 1,
+      "zones": [{ "id": "z_checkpoint","type": "indoor",    "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_checkpoint","toTile": "t_street_ns","toZone": "z_street_ns", "type": "open", "side": "west" },
+        { "fromZone": "z_checkpoint","toTile": "t_garage",   "toZone": "z_garage",    "type": "door", "side": "east" },
+        { "fromZone": "z_checkpoint","toTile": "t_depot_a",  "toZone": "z_depot_a",   "type": "door", "side": "south" }
+      ],
+      "tags": {},
+      "spawnPoints": []
+    },
+    {
+      "id": "t_street_w",  "name": "Rua Oeste",            "image": "tile_street_ew",
+      "gridX": 0, "gridY": 2,
+      "zones": [{ "id": "z_street_w",  "type": "street",    "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_street_w",  "toTile": "t_start",    "toZone": "z_start",     "type": "open", "side": "north" },
+        { "fromZone": "z_street_w",  "toTile": "t_plaza",    "toZone": "z_plaza",     "type": "open", "side": "east" },
+        { "fromZone": "z_street_w",  "toTile": "t_shelter",  "toZone": "z_shelter",   "type": "open", "side": "south" }
+      ],
+      "tags": {},
+      "spawnPoints": ["z_street_w"]
+    },
+    {
+      "id": "t_plaza",     "name": "Praça Central",        "image": "tile_plaza",
+      "gridX": 1, "gridY": 2,
+      "zones": [{ "id": "z_plaza",     "type": "street",    "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_plaza",     "toTile": "t_corridor",  "toZone": "z_corridor",  "type": "open", "side": "north" },
+        { "fromZone": "z_plaza",     "toTile": "t_street_w",  "toZone": "z_street_w",  "type": "open", "side": "west" },
+        { "fromZone": "z_plaza",     "toTile": "t_crossroads","toZone": "z_crossroads","type": "open", "side": "east" },
+        { "fromZone": "z_plaza",     "toTile": "t_shelter",   "toZone": "z_shelter",   "type": "open", "side": "south" }
+      ],
+      "tags": {},
+      "spawnPoints": []
+    },
+    {
+      "id": "t_crossroads","name": "Cruzamento",           "image": "tile_crossroads",
+      "gridX": 2, "gridY": 2,
+      "zones": [{ "id": "z_crossroads","type": "street",    "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_crossroads","toTile": "t_street_ns","toZone": "z_street_ns", "type": "open", "side": "north" },
+        { "fromZone": "z_crossroads","toTile": "t_plaza",    "toZone": "z_plaza",     "type": "open", "side": "west" },
+        { "fromZone": "z_crossroads","toTile": "t_depot_a",  "toZone": "z_depot_a",   "type": "door", "side": "east" },
+        { "fromZone": "z_crossroads","toTile": "t_workshop", "toZone": "z_workshop",  "type": "open", "side": "south" }
+      ],
+      "tags": {},
+      "spawnPoints": []
+    },
+    {
+      "id": "t_depot_a",   "name": "Depósito Combustível", "image": "tile_fuel_depot",
+      "gridX": 3, "gridY": 2,
+      "zones": [{ "id": "z_depot_a",   "type": "indoor",    "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_depot_a",   "toTile": "t_crossroads","toZone": "z_crossroads","type": "door", "side": "west" },
+        { "fromZone": "z_depot_a",   "toTile": "t_checkpoint","toZone": "z_checkpoint","type": "door", "side": "north" },
+        { "fromZone": "z_depot_a",   "toTile": "t_garage",   "toZone": "z_garage",    "type": "door", "side": "east" }
+      ],
+      "tags": { "z_depot_a": ["fuel_canister", "item"] },
+      "spawnPoints": []
+    },
+    {
+      "id": "t_garage",    "name": "Garagem",              "image": "tile_garage",
+      "gridX": 4, "gridY": 1,
+      "zones": [{ "id": "z_garage",    "type": "indoor",    "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_garage",    "toTile": "t_checkpoint","toZone": "z_checkpoint","type": "door", "side": "west" },
+        { "fromZone": "z_garage",    "toTile": "t_depot_a",   "toZone": "z_depot_a",  "type": "door", "side": "south" },
+        { "fromZone": "z_garage",    "toTile": "t_street_ew", "toZone": "z_street_ew","type": "open", "side": "east" }
+      ],
+      "tags": { "z_garage": ["fuel_canister", "item"] },
+      "spawnPoints": []
+    },
+    {
+      "id": "t_street_ew", "name": "Rua Leste",            "image": "tile_street_ew",
+      "gridX": 5, "gridY": 1,
+      "zones": [{ "id": "z_street_ew", "type": "street",   "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_street_ew", "toTile": "t_garage",   "toZone": "z_garage",   "type": "open", "side": "west" },
+        { "fromZone": "z_street_ew", "toTile": "t_extraction","toZone": "z_extraction","type":"open", "side": "east" }
+      ],
+      "tags": {},
+      "spawnPoints": ["z_street_ew"]
+    },
+    {
+      "id": "t_shelter",   "name": "Abrigo",               "image": "tile_lab",
+      "gridX": 0, "gridY": 3,
+      "zones": [{ "id": "z_shelter",   "type": "indoor",   "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_shelter",   "toTile": "t_street_w", "toZone": "z_street_w", "type": "open", "side": "north" },
+        { "fromZone": "z_shelter",   "toTile": "t_plaza",    "toZone": "z_plaza",    "type": "open", "side": "east" },
+        { "fromZone": "z_shelter",   "toTile": "t_workshop", "toZone": "z_workshop", "type": "door", "side": "east" }
+      ],
+      "tags": { "z_shelter": ["medkit", "item"] },
+      "spawnPoints": []
+    },
+    {
+      "id": "t_workshop",  "name": "Oficina",              "image": "tile_garage",
+      "gridX": 2, "gridY": 3,
+      "zones": [{ "id": "z_workshop",  "type": "indoor",   "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_workshop",  "toTile": "t_crossroads","toZone": "z_crossroads","type":"open", "side": "north" },
+        { "fromZone": "z_workshop",  "toTile": "t_shelter",  "toZone": "z_shelter",  "type": "door", "side": "west" }
+      ],
+      "tags": { "z_workshop": ["emp_grenade", "item"] },
+      "spawnPoints": []
+    },
+    {
+      "id": "t_extraction","name": "Zona de Extração",     "image": "tile_extraction",
+      "gridX": 6, "gridY": 1,
+      "zones": [{ "id": "z_extraction","type": "extraction","rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_extraction","toTile": "t_street_ew","toZone": "z_street_ew","type": "open", "side": "west" }
+      ],
+      "tags": { "z_extraction": ["extraction_zone"] },
+      "spawnPoints": []
+    }
+  ],
+  "objectives": {
+    "primary": ["fuel_canister", "extraction_zone"],
+    "secondary": ["datapad_supervisor"]
+  },
+  "spawnZones": ["z_street_ns","z_street_w","z_street_ew"]
+}

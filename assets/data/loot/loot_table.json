@@ -1,0 +1,14 @@
+{
+  "items": [
+    { "id": "pistol",        "name": "Pistola",          "type": "weapon",    "weight": 30, "damage": 1, "range": 1, "dice": 1 },
+    { "id": "shotgun",       "name": "Escopeta",         "type": "weapon",    "weight": 10, "damage": 2, "range": 1, "dice": 2 },
+    { "id": "smg",           "name": "Submetralhadora",  "type": "weapon",    "weight": 8,  "damage": 1, "range": 2, "dice": 3 },
+    { "id": "sniper",        "name": "Rifle de Precisão","type": "weapon",    "weight": 4,  "damage": 3, "range": 4, "dice": 1 },
+    { "id": "emp_grenade",   "name": "Granada EMP",      "type": "consumable","weight": 12, "damage": 2, "range": 2, "dice": 0 },
+    { "id": "medkit",        "name": "Kit Médico",       "type": "consumable","weight": 15, "damage": 0, "range": 0, "dice": 0 },
+    { "id": "armor_vest",    "name": "Colete",           "type": "armor",     "weight": 8,  "damage": 0, "range": 0, "dice": 0 },
+    { "id": "fuel_canister", "name": "Combustível",      "type": "objective", "weight": 20, "damage": 0, "range": 0, "dice": 0 },
+    { "id": "data_chip",     "name": "Chip de Dados",    "type": "objective", "weight": 10, "damage": 0, "range": 0, "dice": 0 },
+    { "id": "nothing",       "name": "Nada",             "type": "none",      "weight": 25, "damage": 0, "range": 0, "dice": 0 }
+  ]
+}

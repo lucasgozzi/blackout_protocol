@@ -1,0 +1,89 @@
+{
+  "id": "c01_m01_fuel_depot",
+  "campaignId": "campaign_01",
+  "missionNumber": 1,
+  "title": "Depósito de Combustível",
+  "description": "Um depósito de combustível no Setor 4 ainda tem reservas intactas. Colete os três canisters antes que o nível de alerta sature a área.",
+  "mapAsset": "assets/data/maps/c01_m01.json",
+  "maxAlertLevel": 10,
+  "maxRounds": 12,
+  "objectives": [
+    {
+      "id": "obj_collect_fuel",
+      "description": "Colete 3 canisters de combustível",
+      "type": "collect",
+      "isPrimary": true,
+      "isCompleted": false,
+      "params": {
+        "itemId": "fuel_canister",
+        "requiredCount": 3,
+        "currentCount": 0
+      }
+    },
+    {
+      "id": "obj_escape",
+      "description": "Evacue todos os operadores pela zona de extração",
+      "type": "reach",
+      "isPrimary": true,
+      "isCompleted": false,
+      "params": {
+        "targetTileTag": "extraction_zone",
+        "requireAllPlayers": true
+      }
+    },
+    {
+      "id": "obj_bonus_datapad",
+      "description": "[Bônus] Recupere o datapad do supervisor",
+      "type": "collect",
+      "isPrimary": false,
+      "isCompleted": false,
+      "params": {
+        "itemId": "datapad_supervisor",
+        "requiredCount": 1,
+        "currentCount": 0
+      }
+    }
+  ],
+  "spawnPoints": [
+    { "id": "sp_north", "x": 6, "y": 0, "direction": "S" },
+    { "id": "sp_east",  "x": 11, "y": 5, "direction": "W" },
+    { "id": "sp_south", "x": 6, "y": 10, "direction": "N" }
+  ],
+  "spawnRules": [
+    { "alertLevel": 1,  "enemyId": "drone_walker",    "count": 2, "spawnPointId": "sp_north" },
+    { "alertLevel": 3,  "enemyId": "infected_walker", "count": 2, "spawnPointId": "sp_south" },
+    { "alertLevel": 5,  "enemyId": "drone_runner",    "count": 2, "spawnPointId": "sp_east"  },
+    { "alertLevel": 5,  "enemyId": "security_walker", "count": 1, "spawnPointId": "sp_north" },
+    { "alertLevel": 8,  "enemyId": "infected_heavy",  "count": 1, "spawnPointId": "sp_south" },
+    { "alertLevel": 9,  "enemyId": "drone_runner",    "count": 3, "spawnPointId": "sp_east"  }
+  ],
+  "alertEvents": [
+    {
+      "triggerAlertLevel": 4,
+      "description": "Drones secundários detectaram movimento. Patrulha reforçada.",
+      "eventType": "spawn_wave",
+      "params": {
+        "enemyId": "drone_walker",
+        "count": 3,
+        "spawnPointId": "sp_north"
+      }
+    },
+    {
+      "triggerAlertLevel": 7,
+      "description": "SENTINEL ativado. Nível de ameaça crítico.",
+      "eventType": "spawn_boss",
+      "params": {
+        "enemyId": "security_abomination",
+        "count": 1,
+        "spawnPointId": "sp_east"
+      }
+    }
+  ],
+  "availablePlayers": ["scout_aria", "engineer_rex", "medic_nova", "soldier_kai"],
+  "startingItems": {
+    "pistol": 2,
+    "medkit": 1,
+    "emp_grenade": 1
+  },
+  "requiredCompletedMissions": []
+}

@@ -1,0 +1,48 @@
+{
+  "players": [
+    {
+      "id": "scout_aria",
+      "name": "Aria",
+      "role": "scout",
+      "spriteId": "scout_aria",
+      "description": "Especialista em reconhecimento. Move-se mais rápido e vê mais longe.",
+      "startingAbilities": ["fast_move", "extended_los"],
+      "xpThresholds": [7, 19, 43],
+      "movementRange": 4,
+      "startingWeapon": "pistol"
+    },
+    {
+      "id": "engineer_rex",
+      "name": "Rex",
+      "role": "engineer",
+      "spriteId": "engineer_rex",
+      "description": "Especialista em sistemas. Pode desativar terminais e reparar equipamentos.",
+      "startingAbilities": ["hack", "repair"],
+      "xpThresholds": [7, 19, 43],
+      "movementRange": 3,
+      "startingWeapon": "crowbar"
+    },
+    {
+      "id": "medic_nova",
+      "name": "Nova",
+      "role": "medic",
+      "spriteId": "medic_nova",
+      "description": "Especialista em suporte. Pode curar aliados e remover nanomáquinas.",
+      "startingAbilities": ["heal", "nano_purge"],
+      "xpThresholds": [7, 19, 43],
+      "movementRange": 3,
+      "startingWeapon": "pistol"
+    },
+    {
+      "id": "soldier_kai",
+      "name": "Kai",
+      "role": "soldier",
+      "spriteId": "soldier_kai",
+      "description": "Especialista em combate. Mais dados no ataque e pode carregar armas pesadas.",
+      "startingAbilities": ["extra_die", "heavy_weapons"],
+      "xpThresholds": [7, 19, 43],
+      "movementRange": 3,
+      "startingWeapon": "shotgun"
+    }
+  ]
+}

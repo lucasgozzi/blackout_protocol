@@ -1,0 +1,13 @@
+{
+  "campaigns": [
+    {
+      "id": "campaign_01",
+      "manifestPath": "assets/data/campaigns/campaign_01/manifest.json",
+      "missionPaths": [
+        "assets/data/campaigns/campaign_01/c01_m01_fuel_depot.json",
+        "assets/data/campaigns/campaign_01/c01_m02_rescue_scientist.json",
+        "assets/data/campaigns/campaign_01/c01_m03_disable_antenna.json"
+      ]
+    }
+  ]
+}

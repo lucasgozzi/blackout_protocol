@@ -1,0 +1,85 @@
+{
+  "id": "c01_m03_disable_antenna",
+  "campaignId": "campaign_01",
+  "missionNumber": 3,
+  "title": "Silêncio Total",
+  "description": "A antena no topo do Setor 1 coordena todos os sistemas da IA de contenção. Desative-a e o protocolo de destruição será abortado. Mas a IA já sabe que vocês estão vindo.",
+  "mapAsset": "assets/data/maps/c01_m03.json",
+  "maxAlertLevel": 10,
+  "maxRounds": 16,
+  "objectives": [
+    {
+      "id": "obj_reach_antenna",
+      "description": "Alcance a sala de controle da antena",
+      "type": "reach",
+      "isPrimary": true,
+      "isCompleted": false,
+      "params": { "targetTileTag": "antenna_control", "requireAllPlayers": false }
+    },
+    {
+      "id": "obj_disable_antenna",
+      "description": "Desative a antena (requer Engenheiro ou datapad)",
+      "type": "disable",
+      "isPrimary": true,
+      "isCompleted": false,
+      "params": {
+        "targetTileTag": "antenna_control",
+        "requiredRoleOrItem": ["engineer_rex", "datapad_supervisor"]
+      }
+    },
+    {
+      "id": "obj_extract",
+      "description": "Evacue todos os operadores",
+      "type": "reach",
+      "isPrimary": true,
+      "isCompleted": false,
+      "params": { "targetTileTag": "extraction_zone", "requireAllPlayers": true }
+    },
+    {
+      "id": "obj_bonus_sentinel",
+      "description": "[Bônus] Elimine o SENTINEL-9",
+      "type": "eliminate",
+      "isPrimary": false,
+      "isCompleted": false,
+      "params": { "targetEnemyId": "security_abomination" }
+    }
+  ],
+  "spawnPoints": [
+    { "id": "sp_north", "x": 6,  "y": 0,  "direction": "S" },
+    { "id": "sp_east",  "x": 12, "y": 6,  "direction": "W" },
+    { "id": "sp_south", "x": 6,  "y": 12, "direction": "N" },
+    { "id": "sp_west",  "x": 0,  "y": 6,  "direction": "E" }
+  ],
+  "spawnRules": [
+    { "alertLevel": 1, "enemyId": "security_walker",       "count": 2, "spawnPointId": "sp_north" },
+    { "alertLevel": 1, "enemyId": "drone_walker",           "count": 2, "spawnPointId": "sp_south" },
+    { "alertLevel": 3, "enemyId": "drone_runner",           "count": 2, "spawnPointId": "sp_east"  },
+    { "alertLevel": 4, "enemyId": "infected_walker",        "count": 3, "spawnPointId": "sp_west"  },
+    { "alertLevel": 6, "enemyId": "infected_heavy",         "count": 2, "spawnPointId": "sp_south" },
+    { "alertLevel": 7, "enemyId": "security_walker",        "count": 3, "spawnPointId": "sp_north" },
+    { "alertLevel": 9, "enemyId": "security_abomination",   "count": 1, "spawnPointId": "sp_east"  }
+  ],
+  "alertEvents": [
+    {
+      "triggerAlertLevel": 3,
+      "description": "Antena detectou invasão. Spawn rate aumentado.",
+      "eventType": "increase_spawn_rate",
+      "params": { "multiplier": 1.5 }
+    },
+    {
+      "triggerAlertLevel": 6,
+      "description": "SENTINEL-9 ativado. Objetivo bônus disponível.",
+      "eventType": "spawn_boss",
+      "params": { "enemyId": "security_abomination", "count": 1, "spawnPointId": "sp_east" }
+    },
+    {
+      "triggerAlertLevel": 9,
+      "description": "Protocolo final ativado. Todas as saídas bloqueadas exceto extração.",
+      "eventType": "close_doors",
+      "params": { "doorTag": "all_except_extraction" }
+    }
+  ],
+  "availablePlayers": ["scout_aria", "engineer_rex", "medic_nova", "soldier_kai"],
+  "startingItems": { "pistol": 2, "medkit": 2, "emp_grenade": 2, "shotgun": 1 },
+  "requiredCompletedMissions": ["c01_m02_rescue_scientist"]
+}

@@ -1,0 +1,66 @@
+{
+  "id": "c01_m02_rescue_scientist",
+  "campaignId": "campaign_01",
+  "missionNumber": 2,
+  "title": "Resgate no Laboratório",
+  "description": "A Dra. Voss está presa no laboratório do Setor 7. Ela conhece a senha do servidor central. Resgate-a antes que os sistemas de contenção a eliminem.",
+  "mapAsset": "assets/data/maps/c01_m02.json",
+  "maxAlertLevel": 10,
+  "maxRounds": 14,
+  "objectives": [
+    {
+      "id": "obj_find_scientist",
+      "description": "Localize a Dra. Voss no laboratório",
+      "type": "reach",
+      "isPrimary": true,
+      "isCompleted": false,
+      "params": { "targetTileTag": "scientist_location", "requireAllPlayers": false }
+    },
+    {
+      "id": "obj_escort_out",
+      "description": "Escorte a Dra. Voss até a zona de extração",
+      "type": "reach",
+      "isPrimary": true,
+      "isCompleted": false,
+      "params": { "targetTileTag": "extraction_zone", "requireNpc": "dr_voss" }
+    },
+    {
+      "id": "obj_bonus_server",
+      "description": "[Bônus] Acesse o servidor central",
+      "type": "disable",
+      "isPrimary": false,
+      "isCompleted": false,
+      "params": { "targetTileTag": "central_server" }
+    }
+  ],
+  "spawnPoints": [
+    { "id": "sp_north", "x": 5, "y": 0,  "direction": "S" },
+    { "id": "sp_west",  "x": 0, "y": 6,  "direction": "E" },
+    { "id": "sp_south", "x": 5, "y": 12, "direction": "N" }
+  ],
+  "spawnRules": [
+    { "alertLevel": 1, "enemyId": "security_walker",  "count": 2, "spawnPointId": "sp_north" },
+    { "alertLevel": 2, "enemyId": "drone_walker",      "count": 2, "spawnPointId": "sp_west"  },
+    { "alertLevel": 4, "enemyId": "infected_walker",   "count": 3, "spawnPointId": "sp_south" },
+    { "alertLevel": 6, "enemyId": "drone_runner",      "count": 2, "spawnPointId": "sp_north" },
+    { "alertLevel": 7, "enemyId": "infected_heavy",    "count": 1, "spawnPointId": "sp_west"  },
+    { "alertLevel": 9, "enemyId": "security_walker",   "count": 3, "spawnPointId": "sp_south" }
+  ],
+  "alertEvents": [
+    {
+      "triggerAlertLevel": 5,
+      "description": "Lockdown iniciado. Portas secundárias fechadas.",
+      "eventType": "close_doors",
+      "params": { "doorTag": "secondary_doors" }
+    },
+    {
+      "triggerAlertLevel": 8,
+      "description": "Protocolo de eliminação ativo. Drones reforçados.",
+      "eventType": "spawn_wave",
+      "params": { "enemyId": "drone_runner", "count": 4, "spawnPointId": "sp_north" }
+    }
+  ],
+  "availablePlayers": ["scout_aria", "engineer_rex", "medic_nova", "soldier_kai"],
+  "startingItems": { "pistol": 2, "medkit": 2, "emp_grenade": 1 },
+  "requiredCompletedMissions": ["c01_m01_fuel_depot"]
+}

@@ -1,0 +1,39 @@
+{
+  "id": "c01_m03",
+  "width": 13,
+  "height": 13,
+  "tiles": [
+    "W W W W W W W W W W W W W",
+    "W . . . . W . . . . . . W",
+    "W . . . . W . . . . . . W",
+    "W . . W . D . W . . . . W",
+    "W . . W . . . W . . . . W",
+    "W W D W W W W W W D W W W",
+    "W . . . . . . . . . . . W",
+    "W . . . . . . . . . . . W",
+    "W . . W . . . W . . . . W",
+    "W . . W . . . W . . . . W",
+    "W W D W W W W W W D W W W",
+    "W . . . . A . . . . . . W",
+    "W W W W W W W W W W W W W"
+  ],
+  "tags": {
+    "5,11": ["antenna_control", "item"],
+    "1,1":  ["extraction_zone"],
+    "11,1": ["extraction_zone"],
+    "1,11": ["extraction_zone"]
+  },
+  "legend": {
+    "W": { "type": "wall",       "blocksMovement": true,  "blocksLOS": true  },
+    ".": { "type": "floor",      "blocksMovement": false, "blocksLOS": false },
+    "D": { "type": "door",       "blocksMovement": false, "blocksLOS": false, "isDoorOpen": true },
+    "A": { "type": "objective",  "blocksMovement": false, "blocksLOS": false },
+    "E": { "type": "extraction", "blocksMovement": false, "blocksLOS": false }
+  },
+  "playerStart": [
+    { "x": 1, "y": 1 },
+    { "x": 2, "y": 1 },
+    { "x": 1, "y": 2 },
+    { "x": 2, "y": 2 }
+  ]
+}
