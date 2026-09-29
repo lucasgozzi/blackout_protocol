@@ -73,8 +73,6 @@ class CombatRules {
     final woundedSurvivorIds = <String>[];
     final logLines = <String>[];
 
-    final ignoreArmor = SkillSystem.ignoresArmor(attacker);
-
     if (!weapon.isMelee) {
       // Friendly fire: misses automatically hit survivors in zone.
       final misses = rolls.where((r) => r < weapon.hitValue).length;
@@ -115,18 +113,21 @@ class CombatRules {
         continue;
       }
 
-      final threshold = ignoreArmor ? 1 : def.damageToKill;
-      if (weapon.damage < threshold) {
-        logLines.add('— ${def.name} absorveu o dano (precisa $threshold dano)');
-        hits--;
-        continue;
-      }
+      // Apply damage to HP; kill when HP reaches 0.
+      final dmg = weapon.damage;
+      final idx = updatedEnemies.indexWhere((e) => e.instanceId == enemy.instanceId);
+      if (idx == -1) { hits--; continue; }
 
-      // 1 hit = 1 kill when weapon.damage >= damageToKill.
-      updatedEnemies.removeWhere((e) => e.instanceId == enemy.instanceId);
-      eliminatedEnemyIds.add(enemy.instanceId);
-      totalXp += _xpFor(def);
-      logLines.add('✓ ${def.name} eliminado');
+      final newHp = updatedEnemies[idx].currentHp - dmg;
+      if (newHp <= 0) {
+        updatedEnemies.removeAt(idx);
+        eliminatedEnemyIds.add(enemy.instanceId);
+        totalXp += _xpFor(def);
+        logLines.add('✓ ${def.name} eliminado');
+      } else {
+        updatedEnemies[idx] = updatedEnemies[idx].copyWith(currentHp: newHp);
+        logLines.add('— ${def.name} ferido ($newHp HP restante)');
+      }
       hits--;
     }
 
