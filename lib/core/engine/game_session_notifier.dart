@@ -8,11 +8,13 @@ import '../models/enemy.dart';
 import '../models/enemy.dart' show EnemyTier;
 import '../models/spawn_event.dart';
 import '../models/weapon.dart';
+import '../models/tutorial_hint.dart';
 import '../rules/combat_rules.dart';
 import '../rules/alert_system.dart';
 import '../rules/search_system.dart';
 import '../rules/spawn_deck.dart';
 import '../rules/spawn_system.dart';
+import '../rules/tutorial_system.dart';
 import '../rules/turn_manager.dart';
 import '../engine/enemy_turn_script.dart';
 import '../engine/mission_logger.dart';
@@ -33,6 +35,10 @@ class SessionState {
   final String? pendingLootPlayerId;
   // Non-null while the enemy-phase cinematic is playing.
   final EnemyTurnScript? cinematicScript;
+  // Tutorial: hint waiting to be shown as a blocking modal.
+  final TutorialHint? pendingHint;
+  // Tutorial: ids of hints already shown this session.
+  final Set<String> shownHintIds;
 
   const SessionState({
     required this.game,
@@ -41,6 +47,8 @@ class SessionState {
     this.pendingLootId,
     this.pendingLootPlayerId,
     this.cinematicScript,
+    this.pendingHint,
+    this.shownHintIds = const {},
   });
 
   SessionState copyWith({
@@ -52,6 +60,9 @@ class SessionState {
     bool clearPendingLoot = false,
     EnemyTurnScript? cinematicScript,
     bool clearCinematic = false,
+    TutorialHint? pendingHint,
+    bool clearPendingHint = false,
+    Set<String>? shownHintIds,
   }) => SessionState(
     game: game ?? this.game,
     mission: mission ?? this.mission,
@@ -59,6 +70,8 @@ class SessionState {
     pendingLootId: clearPendingLoot ? null : (pendingLootId ?? this.pendingLootId),
     pendingLootPlayerId: clearPendingLoot ? null : (pendingLootPlayerId ?? this.pendingLootPlayerId),
     cinematicScript: clearCinematic ? null : (cinematicScript ?? this.cinematicScript),
+    pendingHint: clearPendingHint ? null : (pendingHint ?? this.pendingHint),
+    shownHintIds: shownHintIds ?? this.shownHintIds,
   );
 }
 
@@ -109,41 +122,65 @@ class GameSessionNotifier extends Notifier<SessionState?> {
 
   // ---- Session lifecycle ----
 
+  // ---- Tutorial ----
+
+  /// Fires a tutorial hint for [trigger] if the mission has one and it hasn't
+  /// been shown yet. No-ops if a hint is already pending (never queues two).
+  void _triggerHint(String trigger) {
+    final s = state;
+    if (s == null || s.pendingHint != null) return;
+    final hint = TutorialSystem.check(s.mission, trigger, s.shownHintIds);
+    if (hint == null) return;
+    state = s.copyWith(pendingHint: hint);
+  }
+
+  /// Marks the current pending hint as seen and clears the modal.
+  void dismissHint() {
+    final s = state;
+    if (s == null || s.pendingHint == null) return;
+    state = s.copyWith(
+      clearPendingHint: true,
+      shownHintIds: {...s.shownHintIds, s.pendingHint!.id},
+    );
+  }
+
+  // ---- Session lifecycle ----
+
   void startMission(
     MissionDefinition mission,
     List<PlayerDefinition> selectedPlayers, {
-    List<({int x, int y})> startPositions = const [],
-    Map<String, String> spawnZoneCoords = const {},
+    List<String> startZoneIds = const [],
+    List<String> spawnZones   = const [],
   }) {
     MissionLogger.instance.reset();
     MissionLogger.instance.roundStart(1);
     final players = selectedPlayers.mapIndexed((i, def) {
-      final pos = i < startPositions.length ? startPositions[i] : (x: 1 + i, y: 1);
+      final zoneId = i < startZoneIds.length ? startZoneIds[i] : '';
       return PlayerState(
-        playerId: _uuid.v4(),
-        definitionId: def.id,
-        x: pos.x, y: pos.y,
+        playerId:         _uuid.v4(),
+        definitionId:     def.id,
+        zoneId:           zoneId,
         actionsRemaining: 3,
-        xp: 0,
-        dangerLevel: DangerLevel.blue,
-        movementRange: def.movementRange,
-        equippedLeft: def.startingWeapon.isNotEmpty ? def.startingWeapon : null,
+        xp:               0,
+        dangerLevel:      DangerLevel.blue,
+        movementRange:    def.movementRange,
+        equippedLeft:     def.startingWeapon.isNotEmpty ? def.startingWeapon : null,
       );
     }).toList();
 
     final gameState = GameState(
-      sessionId: _uuid.v4(),
-      missionId: mission.id,
-      round: 1,
-      phase: GamePhase.playerTurn,
-      alertLevel: 0,
-      players: players,
-      enemies: [],
-      objectives: mission.objectives,
+      sessionId:      _uuid.v4(),
+      missionId:      mission.id,
+      round:          1,
+      phase:          GamePhase.playerTurn,
+      alertLevel:     0,
+      players:        players,
+      enemies:        [],
+      objectives:     mission.objectives,
       activePlayerId: players.first.playerId,
-      outcome: GameOutcome.none,
-      eventLog: ['── Round 1 ──'],
-      spawnZoneCoords: spawnZoneCoords,
+      outcome:        GameOutcome.none,
+      eventLog:       ['── Round 1 ──'],
+      spawnZones:     spawnZones,
     );
     _turnManager?.setMission(mission);
     _turnManager?.spawnDeck = mission.spawnDeck.isNotEmpty
@@ -151,6 +188,7 @@ class GameSessionNotifier extends Notifier<SessionState?> {
         : SpawnDeck.campaign01();
     _loadMapForAI(mission);
     state = SessionState(game: gameState, mission: mission, isLoaded: true);
+    _triggerHint('mission_start');
   }
 
   void loadContext(GameContext ctx, MissionDefinition mission) {
@@ -166,69 +204,42 @@ class GameSessionNotifier extends Notifier<SessionState?> {
 
   // ---- Player actions ----
 
-  void movePlayer(String playerId, int tx, int ty) {
+  void movePlayer(String playerId, String zoneId) {
     final s = _requireSession();
     final player = s.game.players.firstWhere((p) => p.playerId == playerId);
     if (!_turnManager!.canMove(player)) return;
-    final newGame = _turnManager!.movePlayer(s.game, playerId, tx, ty);
+    final newGame = _turnManager!.movePlayer(s.game, playerId, zoneId);
     state = s.copyWith(game: newGame);
+    _triggerHint('first_move');
   }
 
-  /// Zombicide zone attack — targets all actors in the zone by priority.
-  void attackZone(String playerId, String weaponId, int targetX, int targetY) {
-    final s = _requireSession();
+  /// Zombicide zone attack — targets all actors in [targetZoneId] by priority.
+  void attackZone(String playerId, String weaponId, String targetZoneId) {
+    final s      = _requireSession();
     final weapon = _weaponCatalog?.getById(weaponId) ?? WeaponDefinition.fists;
-    final result = _turnManager!.attackZone(s.game, playerId, weapon, targetX, targetY);
+    final result = _turnManager!.attackZone(s.game, playerId, weapon, targetZoneId);
     state = s.copyWith(game: result.state);
+    _triggerHint('first_attack');
   }
 
-  /// Attack by zone ID — finds enemies whose position matches the zone coords.
-  void attackZoneById(String playerId, String weaponId, String zoneId) {
-    final s = _requireSession();
-    final weapon = _weaponCatalog?.getById(weaponId) ?? WeaponDefinition.fists;
+  /// Attack by zone ID — direct delegation to attackZone.
+  void attackZoneById(String playerId, String weaponId, String zoneId) =>
+      attackZone(playerId, weaponId, zoneId);
 
-    // Find enemies that "belong" to this zone using spawnZoneCoords as reference,
-    // or just attack all enemies if zone coords aren't available.
-    // We match enemies by finding the closest group to the zone center.
-    final coordStr = s.game.spawnZoneCoords[zoneId];
-    int cx = 0, cy = 0;
-    if (coordStr != null) {
-      final p = coordStr.split(',');
-      cx = int.tryParse(p[0]) ?? 0;
-      cy = int.tryParse(p[1]) ?? 0;
-    }
-
-    // If we have zone coords, find enemies near that point (within 300px).
-    // Otherwise fall back to any enemy position.
-    final enemies = s.game.enemies;
-    if (enemies.isEmpty) return;
-
-    int tx, ty;
-    if (coordStr != null) {
-      // Use zone center — CombatRules will find enemies within radius.
-      tx = cx; ty = cy;
-    } else {
-      // Use first enemy's position.
-      tx = enemies.first.x; ty = enemies.first.y;
-    }
-
-    final result = _turnManager!.attackZone(s.game, playerId, weapon, tx, ty);
-    state = s.copyWith(game: result.state);
-  }
-
-  /// Legacy single-enemy attack — wraps zone attack on enemy's tile.
+  /// Single-enemy attack — wraps zone attack on the enemy's zone.
   void attackEnemy(String playerId, String enemyInstanceId) {
-    final s = _requireSession();
-    final enemy = s.game.enemies.firstWhere((e) => e.instanceId == enemyInstanceId);
+    final s      = _requireSession();
+    final enemy  = s.game.enemies.firstWhere((e) => e.instanceId == enemyInstanceId);
     final player = s.game.players.firstWhere((p) => p.playerId == playerId);
     final weaponId = player.equippedLeft ?? player.equippedRight ?? 'fists';
-    attackZone(playerId, weaponId, enemy.x, enemy.y);
+    attackZone(playerId, weaponId, enemy.zoneId);
   }
 
   void openDoor(String playerId, String fromZoneId, String toZoneId) {
     final s = _requireSession();
     final newGame = _turnManager!.openDoor(s.game, playerId, fromZoneId, toZoneId);
     state = s.copyWith(game: newGame);
+    _triggerHint('first_open_door');
   }
 
   void search(String playerId, String? objectiveId) {
@@ -243,6 +254,7 @@ class GameSessionNotifier extends Notifier<SessionState?> {
     } else {
       state = s.copyWith(game: result.state);
     }
+    _triggerHint('first_search');
   }
 
   /// Place the pending loot item into the chosen slot and clear the pending state.
@@ -279,6 +291,50 @@ class GameSessionNotifier extends Notifier<SessionState?> {
     final s = _requireSession();
     final newGame = _turnManager!.tradeItem(s.game, fromPlayerId, toPlayerId, itemId);
     state = s.copyWith(game: newGame);
+    _triggerHint('first_trade');
+  }
+
+  bool canPlaceTrap(String playerId) {
+    final s = state;
+    if (s == null) return false;
+    final player = s.game.players.where((p) => p.playerId == playerId).firstOrNull;
+    if (player == null) return false;
+    return _turnManager!.canPlaceTrap(player);
+  }
+
+  void placeTrap(String playerId) {
+    final s = _requireSession();
+    final newGame = _turnManager!.placeTrap(s.game, playerId);
+    state = s.copyWith(game: newGame);
+  }
+
+  bool canHealAlly(String healerId, String targetId) {
+    final s = state;
+    if (s == null) return false;
+    final healer = s.game.players.where((p) => p.playerId == healerId).firstOrNull;
+    final target = s.game.players.where((p) => p.playerId == targetId).firstOrNull;
+    if (healer == null || target == null) return false;
+    return _turnManager!.canHealAlly(healer, target);
+  }
+
+  void healAlly(String healerId, String targetId) {
+    final s = _requireSession();
+    final newGame = _turnManager!.healAlly(s.game, healerId, targetId);
+    state = s.copyWith(game: newGame);
+  }
+
+  bool canAreaHealAlly(String healerId) {
+    final s = state;
+    if (s == null) return false;
+    final healer = s.game.players.where((p) => p.playerId == healerId).firstOrNull;
+    if (healer == null) return false;
+    return _turnManager!.canAreaHealAlly(healer, s.game.players);
+  }
+
+  void areaHealAlly(String healerId) {
+    final s = _requireSession();
+    final newGame = _turnManager!.areaHealAlly(s.game, healerId);
+    state = s.copyWith(game: newGame);
   }
 
   /// Equip item from backpack to hand slot. Costs 1 action.
@@ -311,6 +367,7 @@ class GameSessionNotifier extends Notifier<SessionState?> {
 
   void endPlayerTurn() {
     final s = _requireSession();
+    final enemiesBeforePhase = s.game.enemies.length;
     final result = _turnManager!.endPlayerTurn(s.game);
     var newGame  = result.state;
     final script = result.script;
@@ -326,6 +383,13 @@ class GameSessionNotifier extends Notifier<SessionState?> {
       game: newGame,
       cinematicScript: script.isEmpty ? null : script,
     );
+
+    if (result.enemyPhaseRan) {
+      _triggerHint('first_enemy_phase');
+      if (newGame.enemies.length > enemiesBeforePhase) {
+        _triggerHint('first_spawn');
+      }
+    }
   }
 
   void clearCinematic() {
@@ -385,6 +449,10 @@ final gameOutcomeProvider = Provider<GameOutcome>((ref) => ref.watch(gameSession
 final eventLogProvider    = Provider<List<String>>((ref) => ref.watch(gameSessionProvider)?.game.eventLog ?? []);
 final lastCombatLogProvider = Provider<ZoneCombatLog?>((ref) =>
     ref.watch(gameSessionProvider)?.game.lastCombatLog);
+
+final pendingHintProvider = Provider<TutorialHint?>(
+  (ref) => ref.watch(gameSessionProvider)?.pendingHint,
+);
 
 final pendingSpawnProvider = Provider<List<SpawnEvent>>((ref) {
   final maps = ref.watch(gameSessionProvider)?.game.pendingSpawnMaps ?? [];

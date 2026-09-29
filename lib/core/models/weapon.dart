@@ -12,6 +12,8 @@ class WeaponDefinition {
   final int hands;   // 0 = passive (armor), 1 = one-handed, 2 = two-handed
   final bool isNoisy;
   final bool isConsumable;
+  // Only fire/explosive weapons can damage an Abomination.
+  final bool canHurtAbomination;
 
   const WeaponDefinition({
     required this.id,
@@ -25,6 +27,7 @@ class WeaponDefinition {
     required this.hands,
     required this.isNoisy,
     required this.isConsumable,
+    this.canHurtAbomination = false,
   });
 
   bool get isMelee  => type == WeaponType.melee;
@@ -43,8 +46,9 @@ class WeaponDefinition {
     hitValue:     j['hitValue']     as int,
     damage:       j['damage']       as int,
     hands:        j['hands']        as int,
-    isNoisy:      j['isNoisy']      as bool,
-    isConsumable: j['isConsumable'] as bool,
+    isNoisy:             j['isNoisy']             as bool,
+    isConsumable:        j['isConsumable']        as bool,
+    canHurtAbomination:  j['canHurtAbomination']  as bool? ?? false,
   );
 
   static WeaponType _parseType(String s) => switch (s) {
@@ -59,6 +63,6 @@ class WeaponDefinition {
   static const fists = WeaponDefinition(
     id: 'fists', name: 'Punhos', type: WeaponType.melee,
     minRange: 0, maxRange: 0, dice: 1, hitValue: 5, damage: 1,
-    hands: 1, isNoisy: false, isConsumable: false,
+    hands: 1, isNoisy: false, isConsumable: false, canHurtAbomination: false,
   );
 }

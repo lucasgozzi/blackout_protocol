@@ -17,7 +17,6 @@ class AlertSystem {
 
     final newState = state.copyWith(
       alertLevel: newLevel,
-      outcome: newLevel >= mission.maxAlertLevel ? GameOutcome.defeat : state.outcome,
       eventLog: [...state.eventLog, log].takeLast(20).toList(),
     );
 

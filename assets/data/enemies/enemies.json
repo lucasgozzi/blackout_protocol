@@ -10,49 +10,31 @@
       "spriteId": "drone_walker", "specialAbilities": []
     },
     {
+      "id": "drone_fatty",
+      "name": "Heavy Assault Drone",
+      "type": "corruptedDrone",
+      "tier": "fatty",
+      "hp": 2, "damageToKill": 2,
+      "damage": 2, "actions": 1, "activationPriority": 2,
+      "spriteId": "drone_fatty", "specialAbilities": []
+    },
+    {
+      "id": "drone_abomination",
+      "name": "SENTINEL-9",
+      "type": "corruptedDrone",
+      "tier": "abomination",
+      "hp": 999, "damageToKill": 999,
+      "damage": 3, "actions": 1, "activationPriority": 3,
+      "spriteId": "drone_abomination", "specialAbilities": ["immune_to_normal", "area_damage"]
+    },
+    {
       "id": "drone_runner",
       "name": "Attack Drone Mk-II",
       "type": "corruptedDrone",
       "tier": "runner",
       "hp": 1, "damageToKill": 1,
-      "damage": 1, "actions": 2, "activationPriority": 2,
+      "damage": 1, "actions": 2, "activationPriority": 4,
       "spriteId": "drone_runner", "specialAbilities": ["fast_move"]
-    },
-    {
-      "id": "infected_walker",
-      "name": "Nanomachine Host",
-      "type": "nanomachineInfected",
-      "tier": "walker",
-      "hp": 1, "damageToKill": 1,
-      "damage": 1, "actions": 1, "activationPriority": 1,
-      "spriteId": "infected_walker", "specialAbilities": []
-    },
-    {
-      "id": "infected_heavy",
-      "name": "Berserker Host",
-      "type": "nanomachineInfected",
-      "tier": "heavy",
-      "hp": 2, "damageToKill": 2,
-      "damage": 2, "actions": 1, "activationPriority": 3,
-      "spriteId": "infected_heavy", "specialAbilities": []
-    },
-    {
-      "id": "security_walker",
-      "name": "Security Enforcer",
-      "type": "securityMachine",
-      "tier": "walker",
-      "hp": 1, "damageToKill": 1,
-      "damage": 1, "actions": 1, "activationPriority": 2,
-      "spriteId": "security_walker", "specialAbilities": []
-    },
-    {
-      "id": "security_abomination",
-      "name": "SENTINEL-9",
-      "type": "securityMachine",
-      "tier": "abomination",
-      "hp": 3, "damageToKill": 3,
-      "damage": 3, "actions": 2, "activationPriority": 4,
-      "spriteId": "sentinel_9", "specialAbilities": ["ranged_attack", "area_damage"]
     }
   ]
 }

@@ -4,3 +4,4 @@ export 'game_state.dart';
 export 'mission.dart';
 export 'player.dart';
 export 'position.dart';
+export 'tutorial_hint.dart';

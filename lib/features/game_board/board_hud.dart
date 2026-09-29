@@ -117,9 +117,9 @@ class _TopBar extends StatelessWidget {
     final f = level / max;
     final color = f >= 0.8 ? const Color(0xFFFF4444) : f >= 0.5 ? const Color(0xFFFFAA00) : const Color(0xFF00AAFF);
     return Row(children: [
-      Icon(Icons.warning_amber_rounded, color: color, size: 14),
+      Icon(Icons.trending_up, color: color, size: 14),
       const SizedBox(width: 4),
-      Text('$level/$max', style: TextStyle(color: color, fontFamily: 'monospace', fontWeight: FontWeight.bold, fontSize: 13)),
+      Text('Spawn $level', style: TextStyle(color: color, fontFamily: 'monospace', fontWeight: FontWeight.bold, fontSize: 13)),
     ]);
   }
 }
@@ -567,7 +567,7 @@ class _ActionBarState extends State<_ActionBar>
       _MenuItem(
         icon: Icons.search, label: 'BUSCAR',
         color: const Color(0xFFFFAA00),
-        enabled: canAct,
+        enabled: canAct && widget.flameGame.canSearchCurrentPosition(widget.gameState.activePlayerId),
         onTap: () {
           widget.flameGame.searchCurrentPosition(widget.gameState.activePlayerId);
           _closeMenu();
@@ -1932,8 +1932,7 @@ List<PlayerState> _alliesInSameZone(GameState state, PlayerState active) =>
     state.players.where((p) =>
         !p.isEliminated &&
         p.playerId != active.playerId &&
-        p.x == active.x &&
-        p.y == active.y).toList();
+        p.zoneId == active.zoneId).toList();
 
 // ---- Trade Panel ----
 

@@ -15,7 +15,7 @@ final _log = MissionLogger.instance;
 enum _TargetPriority { survivor, walker, fatAbomination, runner }
 
 _TargetPriority _priorityOf(EnemyDefinition def) {
-  if (def.tier == EnemyTier.abomination || def.tier == EnemyTier.heavy) {
+  if (def.tier == EnemyTier.abomination || def.tier == EnemyTier.fatty) {
     return _TargetPriority.fatAbomination;
   }
   if (def.tier == EnemyTier.runner) return _TargetPriority.runner;
@@ -35,22 +35,18 @@ class CombatRules {
   static const int _xpPerAbominationKill = 5;
 
   final Random _rng;
-  // Set by TurnManager after map load so zone radius scales with tile size.
-  int tilePixelSize = 200;
 
   CombatRules({Random? rng}) : _rng = rng ?? Random();
 
   // ---- ZONE ATTACK (Zombicide rules) ----
 
-  /// Attack a zone at (targetX, targetY).
-  /// Weapon determines range, dice, hitValue, damage.
+  /// Attack all actors in [targetZoneId].
   /// Hits assigned by targeting priority.
   ZoneCombatResult attackZone(
     GameState state,
     String attackingPlayerId,
     WeaponDefinition weapon,
-    int targetX,
-    int targetY,
+    String targetZoneId,
   ) {
     final playerIdx = state.players.indexWhere((p) => p.playerId == attackingPlayerId);
     assert(playerIdx != -1);
@@ -62,30 +58,20 @@ class CombatRules {
     final rolls = List.generate(totalDice, (_) => _rng.nextInt(6) + 1);
     var hits = rolls.where((r) => r >= weapon.hitValue).length;
 
-    // Collect actors in target zone.
-    // Use half-tile radius so actors in adjacent zones aren't accidentally included.
-    final zoneRadius = (tilePixelSize * 0.6).round();
-    bool inZone(int ax, int ay) =>
-        (ax - targetX).abs() <= zoneRadius && (ay - targetY).abs() <= zoneRadius;
-
     final survivorsInZone = state.players
-        .where((p) => !p.isEliminated && p.playerId != attackingPlayerId && inZone(p.x, p.y))
+        .where((p) => !p.isEliminated && p.playerId != attackingPlayerId && p.zoneId == targetZoneId)
         .toList();
     final enemiesInZone = state.enemies
-        .where((e) => inZone(e.x, e.y))
+        .where((e) => e.zoneId == targetZoneId)
         .toList();
 
     var updatedPlayers  = List<PlayerState>.from(state.players);
     var updatedEnemies  = List<EnemyInstance>.from(state.enemies);
-    var totalXp = 0;
-    var friendlyFire = false;
-    final eliminatedEnemyIds  = <String>[];
-    final woundedSurvivorIds  = <String>[];
+    var totalXp         = 0;
+    var friendlyFire    = false;
+    final eliminatedEnemyIds = <String>[];
+    final woundedSurvivorIds = <String>[];
     final logLines = <String>[];
-
-    // Zombicide rule: weapon.damage must be >= enemy.damageToKill to kill it.
-    // Each kill costs exactly 1 hit. Hits on enemies the weapon can't kill are wasted.
-    // Melee = no friendly fire. Ranged = misses hit survivors first.
 
     final ignoreArmor = SkillSystem.ignoresArmor(attacker);
 
@@ -121,11 +107,17 @@ class CombatRules {
     for (final entry in sorted) {
       if (hits <= 0) break;
       final (enemy, def) = entry;
-      final threshold = ignoreArmor ? 1 : def.damageToKill;
 
+      // Abominations are immune to normal weapons.
+      if (def.tier == EnemyTier.abomination && !weapon.canHurtAbomination) {
+        logLines.add('✗ ${def.name} imune — use arma especial');
+        hits--;
+        continue;
+      }
+
+      final threshold = ignoreArmor ? 1 : def.damageToKill;
       if (weapon.damage < threshold) {
-        // Weapon too weak — hit absorbed, enemy survives, hit consumed (wasted).
-        logLines.add('— ${def.name} absorveu o dano (precisa ${threshold} dano)');
+        logLines.add('— ${def.name} absorveu o dano (precisa $threshold dano)');
         hits--;
         continue;
       }
@@ -138,7 +130,7 @@ class CombatRules {
       hits--;
     }
 
-    // Award XP and sync dangerLevel from XP (always derived, never stored separately).
+    // Award XP and sync dangerLevel from XP.
     final newXp = attacker.xp + totalXp;
     final updatedAttacker = updatedPlayers[playerIdx].copyWith(
       actionsRemaining: attacker.actionsRemaining - 1,
@@ -152,16 +144,15 @@ class CombatRules {
     logLines.insert(0, '${weapon.name} → [$rollSummary] $hitCount acertos');
 
     final combatLog = ZoneCombatLog(
-      attackerId: attackingPlayerId,
-      weaponId: weapon.id,
-      targetX: targetX,
-      targetY: targetY,
-      rolls: rolls,
-      hits: hitCount,
+      attackerId:         attackingPlayerId,
+      weaponId:           weapon.id,
+      targetZoneId:       targetZoneId,
+      rolls:              rolls,
+      hits:               hitCount,
       eliminatedEnemyIds: eliminatedEnemyIds,
       woundedSurvivorIds: woundedSurvivorIds,
-      xpGained: totalXp,
-      friendlyFire: friendlyFire,
+      xpGained:           totalXp,
+      friendlyFire:       friendlyFire,
     );
 
     var newState = state.copyWith(
@@ -177,13 +168,13 @@ class CombatRules {
     }
 
     _log.playerAttack(
-      player: attacker.definitionId,
-      weapon: weapon.name,
-      rolls: rolls,
-      hitValue: weapon.hitValue,
-      hits: hitCount,
-      killed: eliminatedEnemyIds,
-      wounded: woundedSurvivorIds,
+      player:      attacker.definitionId,
+      weapon:      weapon.name,
+      rolls:       rolls,
+      hitValue:    weapon.hitValue,
+      hits:        hitCount,
+      killed:      eliminatedEnemyIds,
+      wounded:     woundedSurvivorIds,
       friendlyFire: friendlyFire,
     );
 
@@ -201,15 +192,16 @@ class CombatRules {
     final idx = state.players.indexWhere((p) => p.playerId == target.playerId);
     if (idx == -1) return state;
 
-    final wounded = _woundPlayer(state.players[idx]);
+    final wounded  = _woundPlayer(state.players[idx]);
+    final absorbed = wounded.health == state.players[idx].health;
     final log = '${def.name} ataca ${target.definitionId}'
-        '${wounded.isEliminated ? " — ELIMINADO" : " → ${wounded.dangerLevel.name}"}';
+        '${absorbed ? " — bloqueado (Resistência)" : wounded.isEliminated ? " — ELIMINADO" : " → ${wounded.health} HP"}';
 
     final players = List<PlayerState>.from(state.players)..[idx] = wounded;
     return state.copyWith(
-      players: players,
-      eventLog: [...state.eventLog, log].takeLast(20).toList(),
-      lastWoundedPlayerId: target.playerId,
+      players:              players,
+      eventLog:             [...state.eventLog, log].takeLast(20).toList(),
+      lastWoundedPlayerId:  absorbed ? null : target.playerId,
     );
   }
 
@@ -226,11 +218,9 @@ class CombatRules {
     List<EnemyInstance> enemies,
     GameState state,
   ) {
-    // We can't look up EnemyDefinition here without catalog.
-    // Approximate: sort by tier string in definitionId.
     final withPriority = enemies.map((e) {
       final tier = _tierFromId(e.definitionId);
-      final def = _fakeDef(e);
+      final def  = _fakeDef(e);
       return (priority: tier.index, enemy: e, def: def);
     }).toList();
     withPriority.sort((a, b) => a.priority.compareTo(b.priority));
@@ -239,12 +229,11 @@ class CombatRules {
 
   _TargetPriority _tierFromId(String id) {
     if (id.contains('abomination')) return _TargetPriority.fatAbomination;
-    if (id.contains('heavy'))       return _TargetPriority.fatAbomination;
+    if (id.contains('fatty'))       return _TargetPriority.fatAbomination;
     if (id.contains('runner'))      return _TargetPriority.runner;
     return _TargetPriority.walker;
   }
 
-  // Minimal EnemyDefinition built from instance id for internal logic.
   EnemyDefinition _fakeDef(EnemyInstance e) => EnemyDefinition(
     id: e.definitionId, name: e.definitionId,
     type: EnemyType.corruptedDrone,
@@ -255,39 +244,26 @@ class CombatRules {
 
   EnemyTier _tierEnum(String id) {
     if (id.contains('abomination')) return EnemyTier.abomination;
-    if (id.contains('heavy'))       return EnemyTier.heavy;
+    if (id.contains('fatty'))       return EnemyTier.fatty;
     if (id.contains('runner'))      return EnemyTier.runner;
     return EnemyTier.walker;
   }
 
-  static int _armorOf(EnemyDefinition def) {
-    if (def.specialAbilities.contains('armor_2')) return 2;
-    if (def.specialAbilities.contains('armor_1')) return 1;
-    return 0;
-  }
-
   static int _xpFor(EnemyDefinition def) => switch (def.tier) {
     EnemyTier.abomination => _xpPerAbominationKill,
-    EnemyTier.heavy       => _xpPerHeavyKill,
+    EnemyTier.fatty       => _xpPerHeavyKill,
     _                     => _xpPerKill,
   };
 
   static PlayerState _woundPlayer(PlayerState p) {
-    // Armor vest absorbs one wound.
     if (p.hasArmorVest) return p.copyWith(hasArmorVest: false);
-
-    // Zombicide-style: 2 hits to eliminate (blue → yellow → dead).
-    final next = switch (p.dangerLevel) {
-      DangerLevel.blue   => DangerLevel.yellow,
-      DangerLevel.yellow => DangerLevel.red,
-      DangerLevel.orange => DangerLevel.red,
-      DangerLevel.red    => DangerLevel.red,
-    };
+    if (SkillSystem.hasResistance(p) && !p.resistanceUsedThisTurn) {
+      return p.copyWith(resistanceUsedThisTurn: true);
+    }
+    final newHealth = p.health - 1;
     return p.copyWith(
-      dangerLevel: next,
-      isEliminated: p.dangerLevel == DangerLevel.yellow ||
-                    p.dangerLevel == DangerLevel.orange  ||
-                    p.dangerLevel == DangerLevel.red,
+      health:      newHealth,
+      isEliminated: newHealth <= 0,
     );
   }
 

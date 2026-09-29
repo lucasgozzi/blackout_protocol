@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 class BoardConstants {
   static const double tileSize    = 40.0;  // smaller tiles = bigger map fits
-  static const double pieceSize   = 30.0;
+  static const double pieceSize   = 72.0;
   static const double boardPadding = 8.0;
 
   // Zone overlay colors

@@ -1,117 +1,95 @@
-import 'dart:collection';
-import '../models/game_state.dart';
 import '../models/player.dart';
-import '../models/tile.dart';
 
 class MovementRules {
-  /// Zombicide movement model:
-  /// 1 action = move up to [player.movementRange] tiles.
-  /// Returns all reachable tiles across ALL remaining actions.
-  static Map<(int, int), int> reachableTiles(
-    PlayerState player,
-    GameMap map,
-    GameState state,
-  ) {
-    if (player.actionsRemaining <= 0) return {};
+  /// Zone IDs reachable by [player] in one move action (BFS up to movementRange hops).
+  /// Returns empty set if no actions remaining or no map data.
+  static Set<String> reachableZones(PlayerState player, dynamic mapData) {
+    if (player.actionsRemaining <= 0 || mapData == null) return {};
 
-    // Total tiles reachable = movementRange * actionsRemaining
-    final maxTiles = player.movementRange * player.actionsRemaining;
-
-    final visited = <(int, int), int>{}; // position → tiles spent
-    final queue = Queue<({int x, int y, int tilesSpent})>();
-
-    queue.add((x: player.x, y: player.y, tilesSpent: 0));
-    visited[(player.x, player.y)] = 0;
+    final maxHops = player.movementRange;
+    final visited = <String, int>{player.zoneId: 0};
+    final queue   = [player.zoneId];
 
     while (queue.isNotEmpty) {
-      final current = queue.removeFirst();
-      if (current.tilesSpent >= maxTiles) continue;
+      final current = queue.removeAt(0);
+      final dist    = visited[current]!;
+      if (dist >= maxHops) continue;
 
-      for (final (nx, ny) in _neighbors(current.x, current.y)) {
-        if (!map.isWalkable(nx, ny)) continue;
-        if (_isOccupiedByEnemy(nx, ny, state)) continue;
-
-        final cost = current.tilesSpent + 1;
-        if (!visited.containsKey((nx, ny)) || visited[(nx, ny)]! > cost) {
-          visited[(nx, ny)] = cost;
-          queue.add((x: nx, y: ny, tilesSpent: cost));
+      for (final adj in _adjacentZoneIds(current, mapData)) {
+        if (!visited.containsKey(adj)) {
+          visited[adj] = dist + 1;
+          queue.add(adj);
         }
       }
     }
 
-    visited.remove((player.x, player.y));
-    return visited;
+    visited.remove(player.zoneId);
+    return visited.keys.toSet();
   }
 
-  /// Actions consumed to reach (tx, ty) from the player's current position.
-  /// Returns 0 if already there, or the number of move actions needed.
-  static int actionsToMove(PlayerState player, int tx, int ty) {
-    final tiles = (tx - player.x).abs() + (ty - player.y).abs();
-    return (tiles / player.movementRange).ceil();
-  }
-
-  /// Whether [player] can attack a target at (tx, ty).
+  /// Whether [player] can attack [targetZoneId] given [range].
+  /// range=1 → same zone or adjacent; range>1 → BFS.
   static bool canAttack(
     PlayerState player,
-    int tx,
-    int ty,
-    GameMap map, {
+    String targetZoneId,
+    dynamic mapData, {
     int range = 1,
   }) {
     if (player.actionsRemaining <= 0) return false;
-    final dist = _chebyshev(player.x, player.y, tx, ty);
-    if (dist > range) return false;
-    if (range > 1) return _hasLineOfSight(player.x, player.y, tx, ty, map);
-    return true;
+    if (player.zoneId == targetZoneId) return true;
+    if (range <= 0) return false;
+
+    // BFS up to range hops.
+    final visited = <String>{player.zoneId};
+    var frontier  = [player.zoneId];
+    for (var depth = 0; depth < range; depth++) {
+      final next = <String>[];
+      for (final z in frontier) {
+        for (final adj in _adjacentZoneIds(z, mapData)) {
+          if (adj == targetZoneId) return true;
+          if (visited.add(adj)) next.add(adj);
+        }
+      }
+      frontier = next;
+    }
+    return false;
   }
 
-  /// Tiles the player can attack from current position.
-  static List<(int, int)> attackableTiles(
+  /// Zone IDs attackable from player's current position for [range] hops.
+  static Set<String> attackableZones(
     PlayerState player,
-    GameMap map, {
+    dynamic mapData, {
     int range = 1,
   }) {
-    final result = <(int, int)>[];
-    for (var dy = -range; dy <= range; dy++) {
-      for (var dx = -range; dx <= range; dx++) {
-        if (dx == 0 && dy == 0) continue;
-        final tx = player.x + dx;
-        final ty = player.y + dy;
-        if (!map.inBounds(tx, ty)) continue;
-        if (_chebyshev(player.x, player.y, tx, ty) > range) continue;
-        if (range > 1 && !_hasLineOfSight(player.x, player.y, tx, ty, map)) continue;
-        result.add((tx, ty));
+    if (player.actionsRemaining <= 0) return {};
+
+    final visited = <String, int>{player.zoneId: 0};
+    final queue   = [player.zoneId];
+
+    while (queue.isNotEmpty) {
+      final current = queue.removeAt(0);
+      final dist    = visited[current]!;
+      if (dist >= range) continue;
+
+      for (final adj in _adjacentZoneIds(current, mapData)) {
+        if (!visited.containsKey(adj)) {
+          visited[adj] = dist + 1;
+          queue.add(adj);
+        }
       }
     }
-    return result;
+
+    visited.remove(player.zoneId);
+    return visited.keys.toSet();
   }
 
-  static List<(int, int)> _neighbors(int x, int y) => [
-        (x, y - 1), (x, y + 1), (x - 1, y), (x + 1, y),
-      ];
-
-  static bool _isOccupiedByEnemy(int x, int y, GameState state) =>
-      state.enemies.any((e) => e.x == x && e.y == y);
-
-  static int _chebyshev(int x1, int y1, int x2, int y2) =>
-      (x2 - x1).abs() > (y2 - y1).abs() ? (x2 - x1).abs() : (y2 - y1).abs();
-
-  static bool _hasLineOfSight(int x0, int y0, int x1, int y1, GameMap map) {
-    int dx = (x1 - x0).abs();
-    int dy = -(y1 - y0).abs();
-    int sx = x0 < x1 ? 1 : -1;
-    int sy = y0 < y1 ? 1 : -1;
-    int err = dx + dy;
-    int cx = x0, cy = y0;
-
-    while (true) {
-      if (cx == x1 && cy == y1) return true;
-      if (!(cx == x0 && cy == y0) && !(cx == x1 && cy == y1)) {
-        if (!map.hasLineOfSight(cx, cy)) return false;
-      }
-      final e2 = 2 * err;
-      if (e2 >= dy) { err += dy; cx += sx; }
-      if (e2 <= dx) { err += dx; cy += sy; }
+  static List<String> _adjacentZoneIds(String zoneId, dynamic mapData) {
+    try {
+      return (mapData.adjacentZones(zoneId) as Iterable)
+          .map<String>((e) => e.zone.id as String)
+          .toList();
+    } catch (_) {
+      return [];
     }
   }
 }

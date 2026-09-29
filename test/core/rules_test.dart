@@ -4,7 +4,7 @@ import 'package:blackout_protocol/core/models/game_state.dart';
 import 'package:blackout_protocol/core/models/player.dart';
 import 'package:blackout_protocol/core/models/enemy.dart';
 import 'package:blackout_protocol/core/models/mission.dart';
-import 'package:blackout_protocol/core/models/tile.dart';
+import 'package:blackout_protocol/core/models/weapon.dart';
 import 'package:blackout_protocol/core/rules/movement_rules.dart';
 import 'package:blackout_protocol/core/rules/combat_rules.dart';
 import 'package:blackout_protocol/core/rules/alert_system.dart';
@@ -15,31 +15,38 @@ import 'package:blackout_protocol/core/rules/spawn_system.dart';
 PlayerState _player({
   String id = 'p1',
   String defId = 'scout_aria',
-  int x = 5,
-  int y = 5,
+  String zoneId = 'zone_a',
   int actions = 3,
   int xp = 0,
   DangerLevel danger = DangerLevel.blue,
   bool eliminated = false,
+  int health = 2,
 }) =>
     PlayerState(
       playerId: id,
       definitionId: defId,
-      x: x, y: y,
+      zoneId: zoneId,
       actionsRemaining: actions,
       xp: xp,
       dangerLevel: danger,
       isEliminated: eliminated,
+      health: health,
+    );
+
+WeaponDefinition _weapon({int dice = 1, int hitValue = 4, int damage = 1}) =>
+    WeaponDefinition(
+      id: 'test_gun', name: 'Test', type: WeaponType.melee,
+      minRange: 0, maxRange: 2, dice: dice, hitValue: hitValue, damage: damage,
+      hands: 1, isNoisy: false, isConsumable: false,
     );
 
 EnemyInstance _enemyInst({
   String instanceId = 'e1',
   String defId = 'drone_walker',
-  int x = 3,
-  int y = 3,
+  String zoneId = 'zone_b',
   int hp = 1,
 }) =>
-    EnemyInstance(instanceId: instanceId, definitionId: defId, currentHp: hp, x: x, y: y);
+    EnemyInstance(instanceId: instanceId, definitionId: defId, currentHp: hp, zoneId: zoneId);
 
 EnemyDefinition _enemyDef({
   String id = 'drone_walker',
@@ -97,60 +104,81 @@ MissionDefinition _mission({
       startingItems: {},
     );
 
+// Minimal zone-graph stub for MovementRules tests.
+// Provides a simple linear chain: zone_a — zone_b — zone_c — zone_d.
+class _FakeMapData {
+  static const _adj = <String, List<String>>{
+    'zone_a': ['zone_b'],
+    'zone_b': ['zone_a', 'zone_c'],
+    'zone_c': ['zone_b', 'zone_d'],
+    'zone_d': ['zone_c'],
+  };
+
+  List<_FakeZoneRef> adjacentZones(String zoneId, {dynamic openDoorKeys}) {
+    return (_adj[zoneId] ?? []).map((id) => _FakeZoneRef(id)).toList();
+  }
+}
+
+class _FakeZoneRef {
+  final _FakeZone zone;
+  _FakeZoneRef(String id) : zone = _FakeZone(id);
+}
+
+class _FakeZone {
+  final String id;
+  _FakeZone(this.id);
+}
+
 // ---- MovementRules ----
 
 void main() {
   group('MovementRules', () {
-    final map = GameMap.flat(10, 10);
+    final map = _FakeMapData();
 
     test('returns empty when player has no actions', () {
-      final p = _player(actions: 0);
-      final result = MovementRules.reachableTiles(p, map, _state(players: [p]));
+      final p = _player(actions: 0, zoneId: 'zone_b');
+      final result = MovementRules.reachableZones(p, map);
       expect(result, isEmpty);
     });
 
-    test('player with 1 action reaches exactly 4 adjacent tiles', () {
-      final p = _player(x: 5, y: 5, actions: 1);
-      final result = MovementRules.reachableTiles(p, map, _state(players: [p]));
-      expect(result.keys, containsAll([(5, 4), (5, 6), (4, 5), (6, 5)]));
-      expect(result.length, 4);
+    test('player with 1 action reaches direct neighbours only', () {
+      final p = _player(zoneId: 'zone_b', actions: 1);
+      final result = MovementRules.reachableZones(p, map);
+      expect(result, containsAll(['zone_a', 'zone_c']));
+      expect(result.length, 2);
     });
 
-    test('player with 3 actions reaches BFS diamond of radius 3', () {
-      final p = _player(x: 5, y: 5, actions: 3);
-      final result = MovementRules.reachableTiles(p, map, _state(players: [p]));
-      expect(result.containsKey((5, 2)), isTrue);
-      expect(result.containsKey((2, 5)), isTrue);
-      expect(result.containsKey((5, 8)), isTrue);
+    test('player with 2 actions reaches 2 hops', () {
+      final p = _player(zoneId: 'zone_b', actions: 2);
+      final result = MovementRules.reachableZones(p, map);
+      expect(result.contains('zone_d'), isTrue);
     });
 
-    test('enemy-occupied tile is not reachable', () {
-      final p = _player(x: 5, y: 5, actions: 2);
-      final enemy = _enemyInst(x: 5, y: 4);
-      final state = _state(players: [p], enemies: [enemy]);
-      final result = MovementRules.reachableTiles(p, map, state);
-      expect(result.containsKey((5, 4)), isFalse);
+    test('canAttack returns true for same zone', () {
+      final p = _player(zoneId: 'zone_a', actions: 1);
+      expect(MovementRules.canAttack(p, 'zone_a', map, range: 1), isTrue);
     });
 
-    test('canAttack returns false when out of range', () {
-      final p = _player(x: 0, y: 0, actions: 1);
-      expect(MovementRules.canAttack(p, 5, 5, map, range: 1), isFalse);
+    test('canAttack returns true for adjacent zone', () {
+      final p = _player(zoneId: 'zone_b', actions: 1);
+      expect(MovementRules.canAttack(p, 'zone_c', map, range: 1), isTrue);
     });
 
-    test('canAttack returns true for adjacent target', () {
-      final p = _player(x: 5, y: 5, actions: 1);
-      expect(MovementRules.canAttack(p, 5, 6, map, range: 1), isTrue);
+    test('canAttack returns false for zone 3 hops away with range 1', () {
+      final p = _player(zoneId: 'zone_a', actions: 1);
+      expect(MovementRules.canAttack(p, 'zone_d', map, range: 1), isFalse);
     });
 
     test('canAttack returns false with no actions remaining', () {
-      final p = _player(x: 5, y: 5, actions: 0);
-      expect(MovementRules.canAttack(p, 5, 6, map, range: 1), isFalse);
+      final p = _player(zoneId: 'zone_b', actions: 0);
+      expect(MovementRules.canAttack(p, 'zone_c', map, range: 1), isFalse);
     });
 
-    test('attackableTiles returns 4 tiles for melee range', () {
-      final p = _player(x: 5, y: 5, actions: 1);
-      final tiles = MovementRules.attackableTiles(p, map, range: 1);
-      expect(tiles, containsAll([(5, 4), (5, 6), (4, 5), (6, 5)]));
+    test('attackableZones includes direct neighbours but not current zone', () {
+      final p = _player(zoneId: 'zone_b', actions: 1);
+      final zones = MovementRules.attackableZones(p, map, range: 1);
+      expect(zones, containsAll(['zone_a', 'zone_c']));
+      expect(zones.contains('zone_b'), isFalse);
     });
   });
 
@@ -159,95 +187,79 @@ void main() {
   group('CombatRules', () {
     test('guaranteed hit kills walker (hp=1)', () {
       final rules = CombatRules(rng: _FixedRng(6));
-      final initialState = _state(
+      final state = _state(
         players: [_player()],
-        enemies: [_enemyInst(instanceId: 'e1', hp: 1)],
+        enemies: [_enemyInst(instanceId: 'e1', hp: 1, zoneId: 'zone_b')],
       );
-      final def = _enemyDef(hp: 1);
-      final attack = rules.playerAttack(initialState, 'p1', 'e1', def, diceCount: 1);
+      final result = rules.attackZone(state, 'p1', _weapon(), 'zone_b');
 
-      expect(attack.result.hits, 1);
-      expect(attack.result.targetEliminated, isTrue);
-      expect(attack.state.enemies, isEmpty);
+      expect(result.log.hits, 1);
+      expect(result.log.eliminatedEnemyIds, contains('e1'));
+      expect(result.state.enemies, isEmpty);
     });
 
     test('guaranteed miss does no damage', () {
       final rules = CombatRules(rng: _FixedRng(1));
-      final initialState = _state(
+      final state = _state(
         players: [_player()],
-        enemies: [_enemyInst(instanceId: 'e1', hp: 2)],
+        enemies: [_enemyInst(instanceId: 'e1', hp: 2, zoneId: 'zone_b')],
       );
-      final attack = rules.playerAttack(initialState, 'p1', 'e1', _enemyDef(hp: 2), diceCount: 2);
+      final result = rules.attackZone(state, 'p1', _weapon(dice: 2), 'zone_b');
 
-      expect(attack.result.hits, 0);
-      expect(attack.result.targetEliminated, isFalse);
-      expect(attack.state.enemies.first.currentHp, 2);
-    });
-
-    test('armor reduces effective damage', () {
-      final rules = CombatRules(rng: _FixedRng(6));
-      final initialState = _state(
-        players: [_player()],
-        enemies: [_enemyInst(instanceId: 'e1', hp: 5)],
-      );
-      final attack = rules.playerAttack(
-        initialState, 'p1', 'e1', _enemyDef(hp: 5, abilities: ['armor_2']),
-        diceCount: 2,
-      );
-      // 2 hits - 2 armor = 0 effective damage.
-      expect(attack.result.damageDealt, 0);
-      expect(attack.state.enemies.first.currentHp, 5);
+      expect(result.log.hits, 0);
+      expect(result.log.eliminatedEnemyIds, isEmpty);
+      expect(result.state.enemies.first.currentHp, 2);
     });
 
     test('killing an enemy grants xp to attacker', () {
       final rules = CombatRules(rng: _FixedRng(6));
-      final initialState = _state(
+      final state = _state(
         players: [_player(xp: 0)],
-        enemies: [_enemyInst(hp: 1)],
+        enemies: [_enemyInst(hp: 1, zoneId: 'zone_b')],
       );
-      final attack = rules.playerAttack(initialState, 'p1', 'e1', _enemyDef(), diceCount: 1);
+      final result = rules.attackZone(state, 'p1', _weapon(), 'zone_b');
 
-      expect(attack.result.xpGained, 1);
-      expect(attack.state.players.first.xp, 1);
+      expect(result.log.xpGained, 1);
+      expect(result.state.players.first.xp, 1);
     });
 
     test('killing abomination grants 5 xp', () {
       final rules = CombatRules(rng: _FixedRng(6));
-      final initialState = _state(
+      final state = _state(
         players: [_player(xp: 0)],
-        enemies: [_enemyInst(hp: 1)],
+        enemies: [_enemyInst(defId: 'drone_abomination', hp: 1, zoneId: 'zone_b')],
       );
-      final attack = rules.playerAttack(
-        initialState, 'p1', 'e1', _enemyDef(tier: EnemyTier.abomination), diceCount: 1,
-      );
-      expect(attack.result.xpGained, 5);
+      final result = rules.attackZone(state, 'p1', _weapon(), 'zone_b');
+
+      expect(result.log.xpGained, 5);
     });
 
     test('attack consumes 1 action', () {
       final rules = CombatRules(rng: _FixedRng(6));
-      final initialState = _state(players: [_player(actions: 3)], enemies: [_enemyInst()]);
-      final attack = rules.playerAttack(initialState, 'p1', 'e1', _enemyDef());
-      expect(attack.state.players.first.actionsRemaining, 2);
+      final state = _state(players: [_player(actions: 3)], enemies: [_enemyInst(zoneId: 'zone_b')]);
+      final result = rules.attackZone(state, 'p1', _weapon(), 'zone_b');
+
+      expect(result.state.players.first.actionsRemaining, 2);
     });
 
-    test('enemy attack advances player danger level', () {
+    test('enemy attack reduces player health by 1', () {
       final rules = CombatRules();
-      final initialState = _state(
-        players: [_player(danger: DangerLevel.blue)],
-        enemies: [_enemyInst(x: 5, y: 6)],
-      );
-      final attack = rules.enemyAttack(initialState, initialState.enemies.first, _enemyDef(damage: 1));
-      expect(attack.state.players.first.dangerLevel, DangerLevel.yellow);
+      final player = _player(health: 2);
+      final state  = _state(players: [player], enemies: [_enemyInst(zoneId: 'zone_b')]);
+      final after  = rules.enemyAttackPlayer(state, state.enemies.first, _enemyDef(damage: 1), player);
+
+      expect(after.players.first.health, 1);
+      expect(after.players.first.isEliminated, isFalse);
     });
 
-    test('enemy attack eliminates player already at red', () {
+    test('enemy attack eliminates player at 1 health', () {
       final rules = CombatRules();
-      final initialState = _state(
-        players: [_player(danger: DangerLevel.red)],
-        enemies: [_enemyInst(x: 5, y: 6)],
-      );
-      final attack = rules.enemyAttack(initialState, initialState.enemies.first, _enemyDef());
-      expect(attack.state.players.first.isEliminated, isTrue);
+      final player = _player(health: 1);
+      final state  = _state(players: [player], enemies: [_enemyInst(zoneId: 'zone_b')]);
+      final after  = rules.enemyAttackPlayer(state, state.enemies.first, _enemyDef(), player);
+
+      expect(after.players.first.health, 0);
+      expect(after.players.first.isEliminated, isTrue);
     });
   });
 
@@ -264,11 +276,6 @@ void main() {
     test('does not exceed maxAlertLevel', () {
       final result = alert.increment(_state(alertLevel: 9), _mission(maxAlertLevel: 10), amount: 5);
       expect(result.state.alertLevel, 10);
-    });
-
-    test('sets defeat when maxAlertLevel reached', () {
-      final result = alert.increment(_state(alertLevel: 9), _mission(maxAlertLevel: 10));
-      expect(result.state.outcome, GameOutcome.defeat);
     });
 
     test('triggers events at correct threshold', () {

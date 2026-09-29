@@ -29,19 +29,21 @@ class GameState with _$GameState {
     required String activePlayerId,
     required GameOutcome outcome,
     @Default([]) List<String> eventLog,
-    // Noise tokens per zone — "x,y" → noise count. Cleared after zombie phase.
+    // Noise tokens per zone — zoneId → noise count. Cleared after zombie phase.
     @Default({}) Map<String, int> noiseTokens,
     // Last combat result for UI feedback.
     @Default(null) ZoneCombatLog? lastCombatLog,
     // Set of "fromZoneId|toZoneId" keys for opened doors.
     @Default([]) List<String> openDoors,
-    // Spawn zone id → world pixel center "x,y". Populated at mission start from MapData.
-    @Default({}) Map<String, String> spawnZoneCoords,
+    // Zone IDs that are active spawn points. Populated at mission start from MapData.
+    @Default([]) List<String> spawnZones,
     // Pending spawn animations — stored as raw maps to avoid freezed issues.
     // Each map: {zoneId, zoneName, enemyId, enemyName, count, tier}
     @Default([]) List<Map<String, dynamic>> pendingSpawnMaps,
     // Set when an enemy wounds a player — cleared by UI after showing feedback.
     @Default(null) String? lastWoundedPlayerId,
+    // Active traps — "x,y" → damage on trigger. Consumed on first enemy contact.
+    @Default({}) Map<String, int> traps,
   }) = _GameState;
 
   factory GameState.fromJson(Map<String, dynamic> json) =>
@@ -54,8 +56,7 @@ class ZoneCombatLog with _$ZoneCombatLog {
   const factory ZoneCombatLog({
     required String attackerId,
     required String weaponId,
-    required int targetX,
-    required int targetY,
+    required String targetZoneId,
     required List<int> rolls,
     required int hits,
     required List<String> eliminatedEnemyIds,

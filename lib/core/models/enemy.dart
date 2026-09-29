@@ -3,9 +3,9 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'enemy.freezed.dart';
 part 'enemy.g.dart';
 
-enum EnemyType { corruptedDrone, nanomachineInfected, securityMachine }
+enum EnemyType { corruptedDrone }
 
-enum EnemyTier { walker, runner, heavy, abomination }
+enum EnemyTier { walker, runner, fatty, abomination }
 
 @freezed
 class EnemyDefinition with _$EnemyDefinition {
@@ -33,8 +33,7 @@ class EnemyInstance with _$EnemyInstance {
     required String instanceId,
     required String definitionId,
     required int currentHp,
-    required int x,
-    required int y,
+    @Default('') String zoneId,
     @Default(false) bool activated,
   }) = _EnemyInstance;
 

@@ -13,8 +13,6 @@ class SpawnStep extends EnemyTurnStep {
   final String enemyName;
   final EnemyTier tier;
   final int count;
-  final int worldX;
-  final int worldY;
 
   SpawnStep({
     required this.zoneId,
@@ -23,8 +21,6 @@ class SpawnStep extends EnemyTurnStep {
     required this.enemyName,
     required this.tier,
     required this.count,
-    required this.worldX,
-    required this.worldY,
   });
 }
 
@@ -34,20 +30,16 @@ class EnemyMoveStep extends EnemyTurnStep {
   final String definitionId;
   final String enemyName;
   final EnemyTier tier;
-  final int fromX;
-  final int fromY;
-  final int toX;
-  final int toY;
+  final String fromZoneId;
+  final String toZoneId;
 
   EnemyMoveStep({
     required this.instanceId,
     required this.definitionId,
     required this.enemyName,
     required this.tier,
-    required this.fromX,
-    required this.fromY,
-    required this.toX,
-    required this.toY,
+    required this.fromZoneId,
+    required this.toZoneId,
   });
 }
 
@@ -56,13 +48,15 @@ class EnemyGroupMoveStep extends EnemyTurnStep {
   final String definitionId;
   final String enemyName;
   final EnemyTier tier;
-  final List<EnemyMoveStep> moves; // one per enemy in the group
+  final List<EnemyMoveStep> moves;
 
-  /// World-space centroid of all destination positions — camera target.
-  int get centerX => moves.isEmpty ? 0
-      : moves.map((m) => m.toX).reduce((a, b) => a + b) ~/ moves.length;
-  int get centerY => moves.isEmpty ? 0
-      : moves.map((m) => m.toY).reduce((a, b) => a + b) ~/ moves.length;
+  /// Most common destination zone for camera targeting.
+  String get toZoneId {
+    if (moves.isEmpty) return '';
+    final counts = <String, int>{};
+    for (final m in moves) counts[m.toZoneId] = (counts[m.toZoneId] ?? 0) + 1;
+    return counts.entries.reduce((a, b) => a.value >= b.value ? a : b).key;
+  }
 
   EnemyGroupMoveStep({
     required this.definitionId,
@@ -78,8 +72,7 @@ class EnemyAttackStep extends EnemyTurnStep {
   final String definitionId;
   final String enemyName;
   final EnemyTier tier;
-  final int worldX;
-  final int worldY;
+  final String zoneId;
   final String targetPlayerId;
   final String targetName;
   final bool playerWounded;
@@ -90,8 +83,7 @@ class EnemyAttackStep extends EnemyTurnStep {
     required this.definitionId,
     required this.enemyName,
     required this.tier,
-    required this.worldX,
-    required this.worldY,
+    required this.zoneId,
     required this.targetPlayerId,
     required this.targetName,
     required this.playerWounded,

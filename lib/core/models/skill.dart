@@ -7,6 +7,10 @@ enum SkillEffectType {
   extraAction,      // +1 action per turn
   freeOpenDoor,     // open door costs no action
   healOnSearch,     // restore 1 danger level when searching
+  healAlly,         // active: spend 1 action to heal 1 HP to one ally in same tile
+  areaHealAlly,     // active: spend 1 action to heal 1 HP to ALL allies in same tile
+  damageResistance, // passive: ignore the first hit received each round
+  electricTrap,     // active: spend 1 action to place a trap in current zone; triggers on first enemy contact
   areaAttack,       // attack hits all zones in range, not just one
   rangedBonus,      // +N range to ranged weapons
 }
@@ -75,16 +79,16 @@ const Map<String, List<SkillDefinition>> kSurvivorSkills = {
       effect: SkillEffect(type: SkillEffectType.freeOpenDoor),
     ),
     SkillDefinition(
-      id: 'rex_hack',
-      name: 'Hack Avançado',
-      description: '+2 dados ao buscar em salas de servidores.',
+      id: 'rex_electric_trap',
+      name: 'Armadilha Elétrica',
+      description: 'Gasta 1 ação para instalar uma armadilha na zona atual. O primeiro inimigo que entrar sofre 2 de dano e a armadilha é consumida.',
       unlocksAt: DangerLevel.yellow,
-      effect: SkillEffect(type: SkillEffectType.extraDice, value: 2),
+      effect: SkillEffect(type: SkillEffectType.electricTrap, value: 2),
     ),
     SkillDefinition(
       id: 'rex_armor_pierce',
       name: 'Penetração EMP',
-      description: 'Ignora armadura de drones e robôs.',
+      description: 'Ignora a resistência de drones e robôs — qualquer hit é suficiente para eliminá-los. Não funciona contra bosses.',
       unlocksAt: DangerLevel.orange,
       effect: SkillEffect(type: SkillEffectType.ignoreArmor),
     ),
@@ -98,32 +102,32 @@ const Map<String, List<SkillDefinition>> kSurvivorSkills = {
   ],
   'medic_nova': [
     SkillDefinition(
-      id: 'nova_triage',
-      name: 'Triagem',
-      description: 'Ao buscar, recupera 1 nível de perigo.',
+      id: 'nova_field_care',
+      name: 'Cuidados de Campo',
+      description: 'Gasta 1 ação para curar 1 HP de um aliado no mesmo tile.',
       unlocksAt: DangerLevel.blue,
-      effect: SkillEffect(type: SkillEffectType.healOnSearch),
+      effect: SkillEffect(type: SkillEffectType.healAlly, value: 1),
     ),
     SkillDefinition(
-      id: 'nova_steady_hands',
-      name: 'Mãos Firmes',
-      description: '+1 dado em ataques de melee.',
+      id: 'nova_resistance',
+      name: 'Resistência',
+      description: 'Ignora o primeiro hit recebido a cada rodada.',
       unlocksAt: DangerLevel.yellow,
-      effect: SkillEffect(type: SkillEffectType.extraDice, value: 1),
+      effect: SkillEffect(type: SkillEffectType.damageResistance),
     ),
     SkillDefinition(
       id: 'nova_adrenaline',
       name: 'Adrenalina',
-      description: '+1 ação por turno.',
+      description: '+1 ação por turno — permite curar mais vezes.',
       unlocksAt: DangerLevel.orange,
       effect: SkillEffect(type: SkillEffectType.extraAction, value: 1),
     ),
     SkillDefinition(
-      id: 'nova_area_heal',
-      name: 'Pulso de Cura',
-      description: '+2 dados em todos os ataques.',
+      id: 'nova_vital_pulse',
+      name: 'Pulso Vital',
+      description: 'Gasta 1 ação para curar 1 HP de todos os aliados no mesmo tile.',
       unlocksAt: DangerLevel.red,
-      effect: SkillEffect(type: SkillEffectType.extraDice, value: 2),
+      effect: SkillEffect(type: SkillEffectType.areaHealAlly, value: 1),
     ),
   ],
   'soldier_kai': [
@@ -144,7 +148,7 @@ const Map<String, List<SkillDefinition>> kSurvivorSkills = {
     SkillDefinition(
       id: 'kai_armor_break',
       name: 'Quebra-Armadura',
-      description: 'Ignora toda armadura inimiga.',
+      description: 'Ignora a resistência de qualquer inimigo — qualquer hit é suficiente para eliminá-lo. Não funciona contra bosses.',
       unlocksAt: DangerLevel.orange,
       effect: SkillEffect(type: SkillEffectType.ignoreArmor),
     ),

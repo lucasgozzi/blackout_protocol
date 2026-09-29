@@ -190,7 +190,7 @@ class _DevLauncherScreenState extends State<DevLauncherScreen> {
       label: 'PLAYERS',
       children: ctx.players.map((p) => _row(
         p.definitionId,
-        'xp:${p.xp} | pos:(${p.x},${p.y})',
+        'xp:${p.xp} | zone:${p.zoneId}',
       )).toList(),
     );
   }
@@ -202,7 +202,7 @@ class _DevLauncherScreenState extends State<DevLauncherScreen> {
           ? [_row('none', '')]
           : ctx.enemies.map((e) => _row(
               e.definitionId,
-              'hp:${e.currentHp} | pos:(${e.x},${e.y})',
+              'hp:${e.currentHp} | zone:${e.zoneId}',
             )).toList(),
     );
   }

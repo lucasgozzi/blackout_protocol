@@ -26,8 +26,8 @@ class GameBoardGame extends FlameGame with TapCallbacks, ScaleDetector {
   GameState gameState;
   final MissionDefinition mission;
 
-  final void Function(String playerId, String zoneId, int worldX, int worldY) onMoveToZone;
-  final void Function(String playerId, String weaponId, int cx, int cy)        onAttackZone;
+  final void Function(String playerId, String zoneId) onMoveToZone;
+  final void Function(String playerId, String weaponId, String zoneId) onAttackZone;
   final void Function(String playerId, String? objectiveId)                   onSearch;
   final void Function(String playerId, String objectiveId)                    onInteract;
   final void Function(String playerId, String fromZoneId, String toZoneId)    onOpenDoor;
@@ -133,8 +133,8 @@ class GameBoardGame extends FlameGame with TapCallbacks, ScaleDetector {
   }
 
   /// Instantly place an enemy component at a world position (before slide).
-  void placeEnemyAt(String instanceId, int wx, int wy) {
-    _enemies[instanceId]?.position = Vector2(wx.toDouble(), wy.toDouble());
+  void placeEnemyAt(String instanceId, double wx, double wy) {
+    _enemies[instanceId]?.position = Vector2(wx, wy);
   }
 
   void clearMovementTrail() {
@@ -164,7 +164,7 @@ class GameBoardGame extends FlameGame with TapCallbacks, ScaleDetector {
   }
 
   /// Slide all enemies in a group simultaneously, camera follows the centroid.
-  Future<void> slideGroupTo(List<({String instanceId, int tx, int ty})> moves) async {
+  Future<void> slideGroupTo(List<({String instanceId, double tx, double ty})> moves) async {
     if (moves.isEmpty) return;
 
     // Build start positions and ends.
@@ -173,7 +173,7 @@ class GameBoardGame extends FlameGame with TapCallbacks, ScaleDetector {
       final comp = _enemies[m.instanceId];
       if (comp == null) continue;
       comps.add((comp: comp, start: comp.position.clone(),
-                 end: Vector2(m.tx.toDouble(), m.ty.toDouble())));
+                 end: Vector2(m.tx, m.ty)));
     }
     if (comps.isEmpty) return;
 
@@ -262,7 +262,7 @@ class GameBoardGame extends FlameGame with TapCallbacks, ScaleDetector {
         (p) => p.playerId == gameState.activePlayerId && !p.isEliminated,
       );
       _selectedPlayerId  = player.playerId;
-      _selectedZoneId    = _zoneIdAt(player.x, player.y);
+      _selectedZoneId    = player.zoneId;
       _reachableZoneIds  = _computeReachable(_selectedZoneId);
       _attackableZoneIds = _computeAttackable(_selectedZoneId);
       _doorZoneIds       = _computeDoorZones(_selectedZoneId);
@@ -336,9 +336,8 @@ class GameBoardGame extends FlameGame with TapCallbacks, ScaleDetector {
     // Build enemy count per zone id.
     final enemyCountByZone = <String, int>{};
     for (final e in gameState.enemies) {
-      final zoneId = _zoneIdAt(e.x, e.y);
-      if (zoneId != null) {
-        enemyCountByZone[zoneId] = (enemyCountByZone[zoneId] ?? 0) + 1;
+      if (e.zoneId.isNotEmpty) {
+        enemyCountByZone[e.zoneId] = (enemyCountByZone[e.zoneId] ?? 0) + 1;
       }
     }
 
@@ -348,7 +347,11 @@ class GameBoardGame extends FlameGame with TapCallbacks, ScaleDetector {
       final zoneId = entry.key;
       final found  = _mapData.findZone(zoneId);
       final hasObj = found != null && found.zone.tags.any((t) =>
-          gameState.objectives.any((o) => !o.isCompleted && o.id == t));
+          gameState.objectives.any((o) => !o.isCompleted && (
+            o.params['itemId'] == t ||
+            o.params['targetTileTag'] == t ||
+            o.id == t
+          )));
 
       entry.value.setZoneInfo(
         enemyCount:   enemyCountByZone[zoneId] ?? 0,
@@ -363,7 +366,11 @@ class GameBoardGame extends FlameGame with TapCallbacks, ScaleDetector {
       final found = _mapData.findZone(entry.key);
       if (found == null) continue;
       final collected = found.zone.tags.any((tag) =>
-          gameState.objectives.any((o) => o.id == tag && o.isCompleted));
+          gameState.objectives.any((o) => o.isCompleted && (
+            o.params['itemId'] == tag ||
+            o.params['targetTileTag'] == tag ||
+            o.id == tag
+          )));
       entry.value.setCollected(collected);
     }
   }
@@ -382,7 +389,7 @@ class GameBoardGame extends FlameGame with TapCallbacks, ScaleDetector {
     }
     for (final p in gameState.players) {
       if (p.isEliminated) { _players[p.playerId]?.removeFromParent(); _players.remove(p.playerId); continue; }
-      final worldPos = _playerWorldPos(p.x, p.y);
+      final worldPos = worldPosForZone(p.zoneId);
       if (_players.containsKey(p.playerId)) {
         _players[p.playerId]!.updateState(p);
         _players[p.playerId]!.position = worldPos;
@@ -402,50 +409,56 @@ class GameBoardGame extends FlameGame with TapCallbacks, ScaleDetector {
 
   void _syncEnemies() {
     final ids = gameState.enemies.map((e) => e.instanceId).toSet();
-    // Always remove enemies that no longer exist.
     for (final id in _enemies.keys.toList()) {
       if (!ids.contains(id)) { _enemies[id]?.removeFromParent(); _enemies.remove(id); }
     }
     for (final e in gameState.enemies) {
       if (_enemies.containsKey(e.instanceId)) {
         _enemies[e.instanceId]!.updateState(e);
-        // Only reposition if not mid-cinematic slide.
         if (!freezeEnemySync) {
-          _enemies[e.instanceId]!.position = _playerWorldPos(e.x, e.y);
+          _enemies[e.instanceId]!.position = worldPosForZone(e.zoneId);
         }
       } else {
-        // New enemy — always place at its current position (spawn point).
         final comp = EnemyComponent(
           enemy: e,
-          onTap: () => _onZoneTapped(_zoneIdAt(e.x, e.y) ?? ''),
+          onTap: () => _onZoneTapped(e.zoneId),
         );
-        comp.position = _playerWorldPos(e.x, e.y);
+        comp.position = worldPosForZone(e.zoneId);
         _enemies[e.instanceId] = comp;
         _world.add(comp);
       }
     }
-  }
 
-  // Convert game grid position to world pixel position
-  Vector2 _playerWorldPos(int gx, int gy) {
-    // gx,gy are world pixel coords stored directly
-    return Vector2(gx.toDouble(), gy.toDouble());
-  }
-
-  String? _zoneIdAt(int worldX, int worldY) {
-    for (final tile in _mapData.tiles) {
-      final r = _mapData.tileWorldRect(tile);
-      for (final zone in tile.zones) {
-        final zx = r.x + zone.rect.x * r.w;
-        final zy = r.y + zone.rect.y * r.h;
-        final zw = zone.rect.w * r.w;
-        final zh = zone.rect.h * r.h;
-        if (worldX >= zx && worldX <= zx + zw && worldY >= zy && worldY <= zy + zh) {
-          return zone.id;
-        }
+    // Group by (definitionId, zoneId): only the first instance per group is
+    // visible; others are hidden. The visible one shows the group count.
+    final seen = <String>{};
+    final groupCount = <String, int>{};
+    for (final e in gameState.enemies) {
+      final key = '${e.definitionId}@${e.zoneId}';
+      groupCount[key] = (groupCount[key] ?? 0) + 1;
+    }
+    for (final e in gameState.enemies) {
+      final key  = '${e.definitionId}@${e.zoneId}';
+      final comp = _enemies[e.instanceId];
+      if (comp == null) continue;
+      if (!seen.contains(key)) {
+        seen.add(key);
+        comp.isVisible = true;
+        comp.count     = groupCount[key]!;
+      } else {
+        comp.isVisible = false;
+        comp.count     = 1;
       }
     }
-    return null;
+  }
+
+  /// Returns the world-space center for [zoneId], or Vector2.zero() if not found.
+  Vector2 worldPosForZone(String zoneId) {
+    if (!_loaded || zoneId.isEmpty) return Vector2.zero();
+    final found = _mapData.findZone(zoneId);
+    if (found == null) return Vector2.zero();
+    final c = _mapData.zoneCenter(found.tile, found.zone);
+    return Vector2(c.x, c.y);
   }
 
   // ---- Auto-selection ----
@@ -458,7 +471,7 @@ class GameBoardGame extends FlameGame with TapCallbacks, ScaleDetector {
         (p) => p.playerId == playerId && !p.isEliminated && p.actionsRemaining > 0,
       );
       _selectedPlayerId  = player.playerId;
-      _selectedZoneId    = _zoneIdAt(player.x, player.y);
+      _selectedZoneId    = player.zoneId;
       _actionMode        = ActionMode.none;
       _reachableZoneIds  = _computeReachable(_selectedZoneId);
       _attackableZoneIds = _computeAttackable(_selectedZoneId);
@@ -479,24 +492,57 @@ class GameBoardGame extends FlameGame with TapCallbacks, ScaleDetector {
     onActionModeChanged(_actionMode);
   }
 
+  /// True when the active player can perform a useful search in their current zone.
+  /// Zones need either the "item" tag (random loot) or an uncompleted objective.
+  bool canSearchCurrentPosition(String playerId) {
+    try {
+      final player = gameState.players.firstWhere((p) => p.playerId == playerId);
+      if (player.actionsRemaining <= 0) return false;
+      final zoneId = player.zoneId;
+      if (zoneId.isEmpty) return false;
+      final found = _mapData.findZone(zoneId);
+      if (found == null) return false;
+      final tags = found.zone.tags;
+      final hasObjective = tags.any((t) => gameState.objectives.any((o) =>
+        !o.isCompleted && (
+          o.params['itemId'] == t ||
+          o.params['targetTileTag'] == t ||
+          o.id == t
+        )));
+      return hasObjective || tags.contains('item');
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Called directly by the BUSCAR button — searches the player's current tile.
+  /// Only works in zones tagged "item" or containing an uncompleted objective.
   void searchCurrentPosition(String playerId) {
     if (gameState.phase != GamePhase.playerTurn) return;
     final player = gameState.players.firstWhere((p) => p.playerId == playerId);
     if (player.actionsRemaining <= 0) return;
 
-    final zoneId = _zoneIdAt(player.x, player.y);
+    final zoneId = player.zoneId;
+    if (zoneId.isEmpty) return;
+    final found = _mapData.findZone(zoneId);
+    if (found == null) return;
+
+    // Find a matching uncompleted objective by zone tag.
     String? objId;
-    if (zoneId != null) {
-      final found = _mapData.findZone(zoneId);
-      if (found != null) {
-        final tag = found.zone.tags.firstWhere(
-          (t) => gameState.objectives.any((o) => !o.isCompleted && o.id == t),
-          orElse: () => '',
-        );
-        if (tag.isNotEmpty) objId = tag;
-      }
+    for (final tag in found.zone.tags) {
+      final match = gameState.objectives.where((o) =>
+        !o.isCompleted && (
+          o.params['itemId'] == tag ||
+          o.params['targetTileTag'] == tag ||
+          o.id == tag
+        )
+      ).firstOrNull;
+      if (match != null) { objId = match.id; break; }
     }
+
+    // Block random loot in zones without the "item" tag.
+    if (objId == null && !found.zone.tags.contains('item')) return;
+
     onSearch(playerId, objId);
   }
 
@@ -511,7 +557,7 @@ class GameBoardGame extends FlameGame with TapCallbacks, ScaleDetector {
     if (_selectedPlayerId == playerId) { _clearSelection(); return; }
 
     _selectedPlayerId = playerId;
-    _selectedZoneId   = _zoneIdAt(player.x, player.y);
+    _selectedZoneId   = player.zoneId;
     _actionMode = ActionMode.none;
     _reachableZoneIds  = _computeReachable(_selectedZoneId);
     _attackableZoneIds = _computeAttackable(_selectedZoneId);
@@ -529,25 +575,17 @@ class GameBoardGame extends FlameGame with TapCallbacks, ScaleDetector {
     switch (_actionMode) {
       case ActionMode.move:
         if (_reachableZoneIds.contains(zoneId)) {
-          final found = _mapData.findZone(zoneId);
-          if (found != null) {
-            final c = _mapData.zoneCenter(found.tile, found.zone);
-            onMoveToZone(_selectedPlayerId!, zoneId, c.x.toInt(), c.y.toInt());
-          }
-          // Don't clear selection — syncState will recompute reachable zones
-          // after the move, allowing multi-zone movement.
+          onMoveToZone(_selectedPlayerId!, zoneId);
+          // Exit move mode — movement is one activation per turn.
+          _actionMode = ActionMode.none;
+          onActionModeChanged(ActionMode.none);
         }
 
       case ActionMode.attack:
         if (_attackableZoneIds.contains(zoneId)) {
           final player   = gameState.players.firstWhere((p) => p.playerId == _selectedPlayerId);
           final weaponId = activeWeaponId ?? player.equippedLeft ?? player.equippedRight ?? 'fists';
-          // Pass the world-pixel center of the zone so CombatRules can find enemies.
-          final found = _mapData.findZone(zoneId);
-          if (found != null) {
-            final c = _mapData.zoneCenter(found.tile, found.zone);
-            onAttackZone(_selectedPlayerId!, weaponId, c.x.toInt(), c.y.toInt());
-          }
+          onAttackZone(_selectedPlayerId!, weaponId, zoneId);
           _clearSelection();
         }
 
@@ -683,15 +721,14 @@ class GameBoardGame extends FlameGame with TapCallbacks, ScaleDetector {
     final maxY = (_mapData.tiles.map((t) => t.gridY).reduce((a, b) => a > b ? a : b) + 1) * s;
     final mapCenter = Vector2((minX + maxX) / 2, (minY + maxY) / 2);
 
-    // Only use player position if it looks like it's in map space.
+    // Prefer centering on the first alive player's zone, fall back to map center.
     final alive = gameState.players.where((p) => !p.isEliminated).toList();
-    final usePlayer = alive.isNotEmpty &&
-        alive.first.x >= minX && alive.first.x <= maxX &&
-        alive.first.y >= minY && alive.first.y <= maxY;
-
-    _cam.viewfinder.position = usePlayer
-        ? Vector2(alive.first.x.toDouble(), alive.first.y.toDouble())
-        : mapCenter;
+    Vector2? playerPos;
+    if (alive.isNotEmpty && alive.first.zoneId.isNotEmpty) {
+      final p = worldPosForZone(alive.first.zoneId);
+      if (p != Vector2.zero()) playerPos = p;
+    }
+    _cam.viewfinder.position = playerPos ?? mapCenter;
     _cam.viewfinder.zoom = _zoom;
   }
 

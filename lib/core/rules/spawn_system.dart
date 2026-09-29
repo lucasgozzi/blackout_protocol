@@ -11,89 +11,67 @@ class SpawnSystem {
   const SpawnSystem({required this.catalog});
 
   /// Spawns enemies according to rules triggered at the current alert level.
-  /// Called at the start of each Alert Phase.
-  GameState spawnForAlertLevel(
-    GameState state,
-    MissionDefinition mission,
-  ) {
-    final rules = _rulesForLevel(state.alertLevel, mission);
+  GameState spawnForAlertLevel(GameState state, MissionDefinition mission) {
+    final rules = mission.spawnRules.where((r) => r.alertLevel == state.alertLevel).toList();
     if (rules.isEmpty) return state;
 
     final newEnemies = <EnemyInstance>[];
     final logEntries = <String>[];
 
     for (final rule in rules) {
-      final spawnPoint = _spawnPointById(rule.spawnPointId, mission);
+      final spawnPoint = mission.spawnPoints
+          .where((s) => s.id == rule.spawnPointId)
+          .firstOrNull;
       if (spawnPoint == null) continue;
 
+      final def = catalog.getById(rule.enemyId);
       for (var i = 0; i < rule.count; i++) {
-        final def = catalog.getById(rule.enemyId);
-        final (spawnX, spawnY) = _resolveSpawnPosition(
-          spawnPoint.x,
-          spawnPoint.y,
-          newEnemies + state.enemies,
-          state,
-        );
         newEnemies.add(EnemyInstance(
-          instanceId: _uuid.v4(),
+          instanceId:   _uuid.v4(),
           definitionId: rule.enemyId,
-          currentHp: def.hp,
-          x: spawnX,
-          y: spawnY,
+          currentHp:    def.hp,
+          zoneId:       spawnPoint.id,
         ));
       }
-
       logEntries.add('Spawned ${rule.count}x ${rule.enemyId} at ${rule.spawnPointId}');
     }
 
     return state.copyWith(
-      enemies: [...state.enemies, ...newEnemies],
+      enemies:  [...state.enemies, ...newEnemies],
       eventLog: [...state.eventLog, ...logEntries].takeLast(20).toList(),
     );
   }
 
   /// Spawns enemies from a specific AlertEvent (boss spawns, wave events, etc.).
-  GameState spawnFromEvent(
-    GameState state,
-    MissionDefinition mission,
-    AlertEvent event,
-  ) {
+  GameState spawnFromEvent(GameState state, MissionDefinition mission, AlertEvent event) {
     if (event.eventType != 'spawn_wave' && event.eventType != 'spawn_boss') {
       return state;
     }
 
-    final enemyId = event.params['enemyId'] as String;
-    final count = event.params['count'] as int;
+    final enemyId      = event.params['enemyId'] as String;
+    final count        = event.params['count'] as int;
     final spawnPointId = event.params['spawnPointId'] as String;
-    final spawnPoint = _spawnPointById(spawnPointId, mission);
+    final spawnPoint   = mission.spawnPoints
+        .where((s) => s.id == spawnPointId)
+        .firstOrNull;
     if (spawnPoint == null) return state;
 
-    final newEnemies = <EnemyInstance>[];
-    for (var i = 0; i < count; i++) {
-      final def = catalog.getById(enemyId);
-      final (spawnX, spawnY) = _resolveSpawnPosition(
-        spawnPoint.x,
-        spawnPoint.y,
-        newEnemies + state.enemies,
-        state,
-      );
-      newEnemies.add(EnemyInstance(
-        instanceId: _uuid.v4(),
-        definitionId: enemyId,
-        currentHp: def.hp,
-        x: spawnX,
-        y: spawnY,
-      ));
-    }
+    final def        = catalog.getById(enemyId);
+    final newEnemies = List.generate(count, (_) => EnemyInstance(
+      instanceId:   _uuid.v4(),
+      definitionId: enemyId,
+      currentHp:    def.hp,
+      zoneId:       spawnPointId,
+    ));
 
     final log = '${event.description} — spawned ${count}x $enemyId';
     return state.copyWith(
-      enemies: [...state.enemies, ...newEnemies],
+      enemies:  [...state.enemies, ...newEnemies],
       eventLog: [...state.eventLog, log].takeLast(20).toList(),
     );
   }
 
-  /// Spawn enemies in a zone using world coords from GameState.spawnZoneCoords.
+  /// Spawn enemies directly into a zone by zone ID.
   GameState spawnInZone(
     GameState state,
     String zoneId,
@@ -101,27 +79,13 @@ class SpawnSystem {
     int count, {
     String zoneName = '',
   }) {
-    final coordStr = state.spawnZoneCoords[zoneId];
-    if (coordStr == null) return state;
-
-    final parts = coordStr.split(',');
-    final wx = int.tryParse(parts[0]) ?? 0;
-    final wy = int.tryParse(parts[1]) ?? 0;
-
-    final def = catalog.getById(enemyId);
-    final newEnemies = <EnemyInstance>[];
-
-    for (var i = 0; i < count; i++) {
-      final (spawnX, spawnY) = _resolveSpawnPosition(
-          wx, wy, newEnemies + state.enemies, state);
-      newEnemies.add(EnemyInstance(
-        instanceId:   _uuid.v4(),
-        definitionId: enemyId,
-        currentHp:    def.hp,
-        x: spawnX,
-        y: spawnY,
-      ));
-    }
+    final def        = catalog.getById(enemyId);
+    final newEnemies = List.generate(count, (_) => EnemyInstance(
+      instanceId:   _uuid.v4(),
+      definitionId: enemyId,
+      currentHp:    def.hp,
+      zoneId:       zoneId,
+    ));
 
     final spawnMap = <String, dynamic>{
       'zoneId':    zoneId,
@@ -134,50 +98,14 @@ class SpawnSystem {
 
     final log = 'SPAWN: ${count}× ${def.name} em $zoneId';
     return state.copyWith(
-      enemies:         [...state.enemies, ...newEnemies],
-      eventLog:        [...state.eventLog, log].takeLast(20).toList(),
+      enemies:          [...state.enemies, ...newEnemies],
+      eventLog:         [...state.eventLog, log].takeLast(20).toList(),
       pendingSpawnMaps: [...state.pendingSpawnMaps, spawnMap],
     );
   }
-
-  // ---- Private helpers ----
-
-  List<SpawnRule> _rulesForLevel(int alertLevel, MissionDefinition mission) =>
-      mission.spawnRules.where((r) => r.alertLevel == alertLevel).toList();
-
-  SpawnPoint? _spawnPointById(String id, MissionDefinition mission) =>
-      mission.spawnPoints.where((s) => s.id == id).firstOrNull;
-
-  /// Finds the nearest free tile around (x, y) to place the enemy.
-  /// Falls back to the spawn point itself if all adjacent tiles are occupied.
-  (int, int) _resolveSpawnPosition(
-    int x,
-    int y,
-    List<EnemyInstance> alreadyPlaced,
-    GameState state,
-  ) {
-    final occupied = {
-      for (final e in alreadyPlaced) (e.x, e.y),
-      for (final p in state.players) (p.x, p.y),
-    };
-
-    if (!occupied.contains((x, y))) return (x, y);
-
-    for (final (nx, ny) in _adjacents(x, y)) {
-      if (!occupied.contains((nx, ny))) return (nx, ny);
-    }
-
-    return (x, y); // fallback: overlap (crowded spawn)
-  }
-
-  static List<(int, int)> _adjacents(int x, int y) => [
-        (x, y - 1), (x, y + 1), (x - 1, y), (x + 1, y),
-        (x - 1, y - 1), (x + 1, y - 1), (x - 1, y + 1), (x + 1, y + 1),
-      ];
 }
 
 /// Thin interface so SpawnSystem doesn't depend on EnemyCatalog directly.
-/// Makes it easy to provide a fake in tests.
 abstract class EnemyCatalogLookup {
   EnemyDefinition getById(String id);
 }

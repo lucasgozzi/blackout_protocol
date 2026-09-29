@@ -8,7 +8,7 @@
       "description": "Especialista em reconhecimento. Move-se mais rápido e vê mais longe.",
       "startingAbilities": ["fast_move", "extended_los"],
       "xpThresholds": [7, 19, 43],
-      "movementRange": 4,
+      "movementRange": 2,
       "startingWeapon": "pistol"
     },
     {
@@ -19,7 +19,7 @@
       "description": "Especialista em sistemas. Pode desativar terminais e reparar equipamentos.",
       "startingAbilities": ["hack", "repair"],
       "xpThresholds": [7, 19, 43],
-      "movementRange": 3,
+      "movementRange": 2,
       "startingWeapon": "crowbar"
     },
     {
@@ -30,7 +30,7 @@
       "description": "Especialista em suporte. Pode curar aliados e remover nanomáquinas.",
       "startingAbilities": ["heal", "nano_purge"],
       "xpThresholds": [7, 19, 43],
-      "movementRange": 3,
+      "movementRange": 2,
       "startingWeapon": "pistol"
     },
     {
@@ -41,7 +41,7 @@
       "description": "Especialista em combate. Mais dados no ataque e pode carregar armas pesadas.",
       "startingAbilities": ["extra_die", "heavy_weapons"],
       "xpThresholds": [7, 19, 43],
-      "movementRange": 3,
+      "movementRange": 2,
       "startingWeapon": "shotgun"
     }
   ]

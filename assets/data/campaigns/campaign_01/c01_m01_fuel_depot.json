@@ -50,12 +50,12 @@
     { "id": "sp_south", "x": 6, "y": 10, "direction": "N" }
   ],
   "spawnRules": [
-    { "alertLevel": 1,  "enemyId": "drone_walker",    "count": 2, "spawnPointId": "sp_north" },
-    { "alertLevel": 3,  "enemyId": "infected_walker", "count": 2, "spawnPointId": "sp_south" },
-    { "alertLevel": 5,  "enemyId": "drone_runner",    "count": 2, "spawnPointId": "sp_east"  },
-    { "alertLevel": 5,  "enemyId": "security_walker", "count": 1, "spawnPointId": "sp_north" },
-    { "alertLevel": 8,  "enemyId": "infected_heavy",  "count": 1, "spawnPointId": "sp_south" },
-    { "alertLevel": 9,  "enemyId": "drone_runner",    "count": 3, "spawnPointId": "sp_east"  }
+    { "alertLevel": 1,  "enemyId": "drone_walker",      "count": 2, "spawnPointId": "sp_north" },
+    { "alertLevel": 3,  "enemyId": "drone_walker",      "count": 2, "spawnPointId": "sp_south" },
+    { "alertLevel": 5,  "enemyId": "drone_runner",      "count": 2, "spawnPointId": "sp_east"  },
+    { "alertLevel": 5,  "enemyId": "drone_fatty",       "count": 1, "spawnPointId": "sp_north" },
+    { "alertLevel": 8,  "enemyId": "drone_fatty",       "count": 1, "spawnPointId": "sp_south" },
+    { "alertLevel": 9,  "enemyId": "drone_runner",      "count": 3, "spawnPointId": "sp_east"  }
   ],
   "alertEvents": [
     {
@@ -64,7 +64,7 @@
       "eventType": "spawn_wave",
       "params": {
         "enemyId": "drone_walker",
-        "count": 3,
+        "count": 2,
         "spawnPointId": "sp_north"
       }
     },
@@ -85,5 +85,42 @@
     "medkit": 1,
     "emp_grenade": 1
   },
-  "requiredCompletedMissions": []
+  "requiredCompletedMissions": [],
+  "tutorialHints": [
+    {
+      "id": "m01_start",
+      "trigger": "mission_start",
+      "title": "Como vencer esta missão",
+      "message": "Plano em 3 passos:\n\n① Mova seus operadores até os canisters marcados no mapa.\n② Use BUSCAR em cada canister para coletá-lo (3 no total).\n③ Leve TODOS os operadores até a zona de EXTRAÇÃO.\n\nCada turno você tem 3 ações: mover, buscar ou atacar. Comece movendo um operador em direção ao canister mais próximo.",
+      "icons": [
+        { "emoji": "⛽", "color": "#FFAA00", "label": "Canister de combustível — use BUSCAR para coletar (3 no total)" },
+        { "emoji": "↑",  "color": "#00FF88", "label": "Zona de extração — leve todos aqui para vencer" },
+        { "emoji": "📋", "color": "#00FF88", "label": "Datapad do supervisor — objetivo bônus, não obrigatório" }
+      ]
+    },
+    {
+      "id": "m01_first_move",
+      "trigger": "first_move",
+      "title": "Movimento",
+      "message": "Cada zona adjacente custa 1 ação de movimento. Você tem 3 ações por turno — use-as para mover, buscar e atacar em qualquer ordem.\n\nDica: distribua os operadores para cobrir os 3 canisters ao mesmo tempo."
+    },
+    {
+      "id": "m01_first_search",
+      "trigger": "first_search",
+      "title": "Busca — como coletar os canisters",
+      "message": "Numa zona com canister marcado, BUSCAR o coleta automaticamente. Colete os 3 canisters e então leve todos os operadores até a zona de EXTRAÇÃO para vencer.\n\nEm zonas sem objetivo, buscar sorteia um item aleatório do loot."
+    },
+    {
+      "id": "m01_first_enemy_phase",
+      "trigger": "first_enemy_phase",
+      "title": "Fase Inimiga",
+      "message": "Todos agiram — agora os inimigos se movem. Eles vão em direção ao operador mais barulhento. Cada operador numa zona gera 1 token de ruído por turno.\n\nDica: se um inimigo está bloqueando o caminho para um canister, ataque-o antes de mover."
+    },
+    {
+      "id": "m01_first_spawn",
+      "trigger": "first_spawn",
+      "title": "Inimigos surgindo — seja rápido",
+      "message": "Todo round o Nível de Alerta sobe 1 e novos inimigos aparecem nos pontos de spawn (bordas do mapa). Se o alerta chegar a 10, é derrota.\n\nPriorize coletar os canisters antes de eliminar inimigos — tempo é o recurso mais escasso."
+    }
+  ]
 }

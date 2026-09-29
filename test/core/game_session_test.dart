@@ -60,7 +60,7 @@ GameContext _ctx({
         PlayerState(
           playerId: 'p1',
           definitionId: 'scout_aria',
-          x: 3, y: 3,
+          zoneId: 'zone_a',
           actionsRemaining: 3,
           xp: 0,
           dangerLevel: DangerLevel.blue,
@@ -102,7 +102,6 @@ void main() {
     test('startMission creates players at correct positions', () async {
       final catalog = await _loadCatalog();
       final notifier = _buildNotifier(catalog);
-      final playerCatalog = await _loadCatalog(); // reusing for structure
       notifier.loadContext(_ctx(), _mission());
 
       final game = notifier.state!.game;
@@ -118,11 +117,10 @@ void main() {
       final notifier = _buildNotifier(catalog);
       notifier.loadContext(_ctx(), _mission());
 
-      notifier.movePlayer('p1', 4, 3); // move 1 tile right
+      notifier.movePlayer('p1', 'zone_b');
 
       final player = notifier.state!.game.players.first;
-      expect(player.x, 4);
-      expect(player.y, 3);
+      expect(player.zoneId, 'zone_b');
       expect(player.actionsRemaining, 2);
     });
 
@@ -134,11 +132,11 @@ void main() {
         _ctx(players: [
           PlayerState(
             playerId: 'p1', definitionId: 'soldier_kai',
-            x: 3, y: 3, actionsRemaining: 3, xp: 0,
+            zoneId: 'zone_a', actionsRemaining: 3, xp: 0,
             dangerLevel: DangerLevel.blue,
           ),
         ], enemies: [
-          EnemyInstance(instanceId: 'e1', definitionId: 'drone_walker', currentHp: 1, x: 3, y: 4),
+          EnemyInstance(instanceId: 'e1', definitionId: 'drone_walker', currentHp: 1, zoneId: 'zone_a'),
         ]),
         _mission(),
       );
@@ -168,7 +166,7 @@ void main() {
         players: [
           PlayerState(
             playerId: 'p1', definitionId: 'scout_aria',
-            x: 3, y: 3, actionsRemaining: 3, xp: 0,
+            zoneId: 'zone_a', actionsRemaining: 3, xp: 0,
             dangerLevel: DangerLevel.blue,
           ),
         ],
@@ -210,7 +208,7 @@ void main() {
       final notifier = _buildNotifier(catalog);
       notifier.loadContext(_ctx(), _mission());
 
-      notifier.movePlayer('p1', 4, 3);
+      notifier.movePlayer('p1', 'zone_b');
       expect(notifier.state!.game.players.first.actionsRemaining, 2);
 
       notifier.endPlayerTurn();
@@ -257,7 +255,7 @@ void main() {
         players: [
           PlayerState(
             playerId: 'p1', definitionId: 'scout_aria',
-            x: 3, y: 3, actionsRemaining: 3, xp: 0,
+            zoneId: 'zone_a', actionsRemaining: 3, xp: 0,
             dangerLevel: DangerLevel.blue,
           ),
         ],
@@ -294,7 +292,7 @@ void main() {
       notifier.loadContext(GameContext.preset(GameContextPreset.bossEncounter), _mission());
 
       final hasBoss = notifier.state!.game.enemies
-          .any((e) => e.definitionId == 'security_abomination');
+          .any((e) => e.definitionId == 'drone_abomination');
       expect(hasBoss, isTrue);
     });
 
@@ -303,7 +301,7 @@ void main() {
       final notifier = _buildNotifier(catalog);
       notifier.loadContext(GameContext.preset(GameContextPreset.nearVictory), _mission());
 
-      expect(notifier.state!.game.players.first.inventory, isNotEmpty);
+      expect(notifier.state!.game.players.first.allItems, isNotEmpty);
     });
   });
 }

@@ -1,6 +1,6 @@
 import 'dart:math';
 
-enum SpawnCardType { walker, runner, heavy, abomination }
+enum SpawnCardType { walker, runner, fatty, abomination }
 
 class SpawnCard {
   final SpawnCardType type;
@@ -22,22 +22,16 @@ class SpawnDeck {
     final cards = [
       // 10× Walker (drone_walker)
       for (var i = 0; i < 10; i++)
-        const SpawnCard(type: SpawnCardType.walker, count: 2, enemyId: 'drone_walker'),
+        const SpawnCard(type: SpawnCardType.walker, count: 1, enemyId: 'drone_walker'),
       // 6× Runner (drone_runner)
       for (var i = 0; i < 6; i++)
         const SpawnCard(type: SpawnCardType.runner, count: 1, enemyId: 'drone_runner'),
-      // 6× Walker (infected_walker)
-      for (var i = 0; i < 6; i++)
-        const SpawnCard(type: SpawnCardType.walker, count: 2, enemyId: 'infected_walker'),
-      // 4× Heavy (infected_heavy)
+      // 4× Fatty (drone_fatty)
       for (var i = 0; i < 4; i++)
-        const SpawnCard(type: SpawnCardType.heavy, count: 1, enemyId: 'infected_heavy'),
-      // 4× Security Walker
-      for (var i = 0; i < 4; i++)
-        const SpawnCard(type: SpawnCardType.walker, count: 1, enemyId: 'security_walker'),
+        const SpawnCard(type: SpawnCardType.fatty, count: 1, enemyId: 'drone_fatty'),
       // 2× Abomination (only drawn at high alert)
       for (var i = 0; i < 2; i++)
-        const SpawnCard(type: SpawnCardType.abomination, count: 1, enemyId: 'security_abomination'),
+        const SpawnCard(type: SpawnCardType.abomination, count: 1, enemyId: 'drone_abomination'),
     ]..shuffle(rng ?? Random());
 
     return SpawnDeck._(cards, rng: rng);

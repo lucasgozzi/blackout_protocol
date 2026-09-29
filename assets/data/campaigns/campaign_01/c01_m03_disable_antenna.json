@@ -51,13 +51,13 @@
     { "id": "sp_west",  "x": 0,  "y": 6,  "direction": "E" }
   ],
   "spawnRules": [
-    { "alertLevel": 1, "enemyId": "security_walker",       "count": 2, "spawnPointId": "sp_north" },
-    { "alertLevel": 1, "enemyId": "drone_walker",           "count": 2, "spawnPointId": "sp_south" },
-    { "alertLevel": 3, "enemyId": "drone_runner",           "count": 2, "spawnPointId": "sp_east"  },
-    { "alertLevel": 4, "enemyId": "infected_walker",        "count": 3, "spawnPointId": "sp_west"  },
-    { "alertLevel": 6, "enemyId": "infected_heavy",         "count": 2, "spawnPointId": "sp_south" },
-    { "alertLevel": 7, "enemyId": "security_walker",        "count": 3, "spawnPointId": "sp_north" },
-    { "alertLevel": 9, "enemyId": "security_abomination",   "count": 1, "spawnPointId": "sp_east"  }
+    { "alertLevel": 1, "enemyId": "drone_walker",       "count": 2, "spawnPointId": "sp_north" },
+    { "alertLevel": 1, "enemyId": "drone_walker",       "count": 2, "spawnPointId": "sp_south" },
+    { "alertLevel": 3, "enemyId": "drone_runner",       "count": 2, "spawnPointId": "sp_east"  },
+    { "alertLevel": 4, "enemyId": "drone_runner",       "count": 3, "spawnPointId": "sp_west"  },
+    { "alertLevel": 6, "enemyId": "drone_fatty",        "count": 2, "spawnPointId": "sp_south" },
+    { "alertLevel": 7, "enemyId": "drone_fatty",        "count": 3, "spawnPointId": "sp_north" },
+    { "alertLevel": 9, "enemyId": "drone_abomination",  "count": 1, "spawnPointId": "sp_east"  }
   ],
   "alertEvents": [
     {
@@ -81,5 +81,24 @@
   ],
   "availablePlayers": ["scout_aria", "engineer_rex", "medic_nova", "soldier_kai"],
   "startingItems": { "pistol": 2, "medkit": 2, "emp_grenade": 2, "shotgun": 1 },
-  "requiredCompletedMissions": ["c01_m02_rescue_scientist"]
+  "requiredCompletedMissions": ["c01_m02_rescue_scientist"],
+  "tutorialHints": [
+    {
+      "id": "m03_start",
+      "trigger": "mission_start",
+      "title": "Como vencer esta missão",
+      "message": "Plano em 3 passos:\n\n① Leve o ENGENHEIRO (Rex) — ou qualquer operador com o DATAPAD do supervisor — até a sala de controle da antena.\n② Use INTERAGIR na antena para desativá-la. Sem o engenheiro ou o datapad, a ação falha.\n③ Evacue TODOS os operadores pela zona de EXTRAÇÃO.\n\nDica: o datapad pode ser transferido entre operadores na mesma zona — use TROCAR ITEM (1 ação).",
+      "icons": [
+        { "emoji": "📡", "color": "#FF4444", "label": "Antena — chegue aqui com o Engenheiro ou o datapad e use INTERAGIR" },
+        { "emoji": "📋", "color": "#00FF88", "label": "Datapad do supervisor — necessário para desativar a antena" },
+        { "emoji": "↑",  "color": "#00FF88", "label": "Zona de extração — evacue todos aqui após desativar a antena" }
+      ]
+    },
+    {
+      "id": "m03_first_trade",
+      "trigger": "first_trade",
+      "title": "Troca de Itens",
+      "message": "Operadores na mesma zona podem trocar itens por 1 ação. Use isso para passar o datapad para quem vai até a antena — não precisa ser o Engenheiro se você tiver o item certo."
+    }
+  ]
 }

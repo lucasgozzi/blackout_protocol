@@ -10,6 +10,11 @@ class EnemyComponent extends PositionComponent with TapCallbacks {
   EnemyInstance enemy;
   final VoidCallback onTap;
 
+  // When false this instance is a duplicate in the same tile — render nothing.
+  bool isVisible = true;
+  // Total enemies of this type at this tile (shown as badge inside token).
+  int count = 1;
+
   ui.Image? _tokenImage;
   static final Map<String, ui.Image?> _imageCache = {};
 
@@ -20,7 +25,7 @@ class EnemyComponent extends PositionComponent with TapCallbacks {
 
   @override
   Future<void> onLoad() async {
-    position = _worldPos(enemy.x, enemy.y);
+    // Position is managed externally by GameBoardGame._syncEnemies
     _tokenImage = await _loadImage(enemy.definitionId);
   }
 
@@ -39,13 +44,8 @@ class EnemyComponent extends PositionComponent with TapCallbacks {
     }
   }
 
-  static Vector2 _worldPos(int gx, int gy) =>
-      Vector2(gx.toDouble(), gy.toDouble());
-
   void updateState(EnemyInstance newEnemy) {
     enemy = newEnemy;
-    position = _worldPos(newEnemy.x, newEnemy.y);
-    // Load image if definition changed
     if (_tokenImage == null) {
       _loadImage(newEnemy.definitionId).then((img) => _tokenImage = img);
     }
@@ -54,84 +54,96 @@ class EnemyComponent extends PositionComponent with TapCallbacks {
   bool get _isBoss => enemy.definitionId.contains('abomination');
   Color get _color  => _isBoss ? BoardConstants.enemyBoss : BoardConstants.enemyColor;
 
+  Path _diamondPath(Offset center, double r) => Path()
+    ..moveTo(center.dx, center.dy - r + 2)
+    ..lineTo(center.dx + r - 2, center.dy)
+    ..lineTo(center.dx, center.dy + r - 2)
+    ..lineTo(center.dx - r + 2, center.dy)
+    ..close();
+
   @override
   void render(Canvas canvas) {
+    if (!isVisible) return;
+
     final s = BoardConstants.pieceSize;
     final r = s / 2;
     final center = Offset(r, r);
+    final diamond = _diamondPath(center, r);
 
-    // Boss glow
     if (_isBoss) {
       canvas.drawCircle(center, r + 6, Paint()
-        ..color = _color.withOpacity(0.25)
+        ..color = _color.withValues(alpha: 0.25)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8));
     }
 
     if (_tokenImage != null) {
-      // Draw token image fitted inside the component, preserving aspect ratio
-      final imgW = _tokenImage!.width.toDouble();
-      final imgH = _tokenImage!.height.toDouble();
-      final scale = (imgW > imgH) ? s / imgW : s / imgH;
+      canvas.save();
+      canvas.clipPath(diamond);
+
+      final imgW  = _tokenImage!.width.toDouble();
+      final imgH  = _tokenImage!.height.toDouble();
+      final scale = (imgW < imgH) ? s / imgW : s / imgH;
       final drawW = imgW * scale;
       final drawH = imgH * scale;
-      final dx = (s - drawW) / 2;
-      final dy = (s - drawH) / 2;
+      canvas.drawImageRect(
+        _tokenImage!,
+        Rect.fromLTWH(0, 0, imgW, imgH),
+        Rect.fromLTWH((s - drawW) / 2, (s - drawH) / 2, drawW, drawH),
+        Paint(),
+      );
+      canvas.restore();
 
-      final src = Rect.fromLTWH(0, 0, imgW, imgH);
-      final dst = Rect.fromLTWH(dx, dy, drawW, drawH);
-      canvas.drawImageRect(_tokenImage!, src, dst, Paint());
-
-      // HP bar below token
-      _renderHpBar(canvas, s);
+      canvas.drawPath(diamond, Paint()
+        ..color = _color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = _isBoss ? 2.5 : 1.5);
     } else {
-      _renderPlaceholder(canvas, center, r, s);
+      _renderPlaceholder(canvas, center, r);
     }
+
+    if (count > 1) _renderCountBadge(canvas, center, r);
   }
 
-  void _renderPlaceholder(Canvas canvas, Offset center, double r, double s) {
-    // Diamond shape
-    final path = Path()
-      ..moveTo(center.dx, center.dy - r + 3)
-      ..lineTo(center.dx + r - 3, center.dy)
-      ..lineTo(center.dx, center.dy + r - 3)
-      ..lineTo(center.dx - r + 3, center.dy)
-      ..close();
-
-    canvas.drawPath(path, Paint()..color = _color.withOpacity(0.15));
+  void _renderPlaceholder(Canvas canvas, Offset center, double r) {
+    final path = _diamondPath(center, r);
+    canvas.drawPath(path, Paint()..color = _color.withValues(alpha: 0.15));
     canvas.drawPath(path, Paint()
       ..color = _color
       ..style = PaintingStyle.stroke
       ..strokeWidth = _isBoss ? 2.5 : 1.5);
 
-    // Letter
     final letter = switch (enemy.definitionId) {
-      String d when d.contains('drone')    => 'D',
-      String d when d.contains('infected') => 'I',
-      String d when d.contains('security') => 'S',
-      _ => '?',
+      String d when d.contains('runner')      => 'R',
+      String d when d.contains('fatty')       => 'F',
+      String d when d.contains('abomination') => 'A',
+      _                                       => 'W',
     };
     final tp = TextPainter(
       text: TextSpan(text: letter, style: TextStyle(
         color: _color, fontSize: _isBoss ? 18 : 14, fontWeight: FontWeight.bold)),
       textDirection: TextDirection.ltr,
     )..layout();
-    tp.paint(canvas, center - Offset(tp.width / 2, tp.height / 2 + 2));
-
-    _renderHpBar(canvas, s);
+    tp.paint(canvas, center - Offset(tp.width / 2, tp.height / 2));
   }
 
-  void _renderHpBar(Canvas canvas, double s) {
-    final maxHp = _isBoss ? 10 : 3;
-    final frac  = (enemy.currentHp / maxHp).clamp(0.0, 1.0);
-    final barW  = s - 8;
-    final barY  = s - 6.0;
+  void _renderCountBadge(Canvas canvas, Offset center, double r) {
+    // Small badge in the bottom-right corner of the diamond.
+    final bx = center.dx + r * 0.45;
+    final by = center.dy + r * 0.45;
+    const br = 7.0;
 
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(Rect.fromLTWH(4, barY, barW, 4), const Radius.circular(2)),
-      Paint()..color = const Color(0xFF1A1A1A));
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(Rect.fromLTWH(4, barY, barW * frac, 4), const Radius.circular(2)),
-      Paint()..color = _color);
+    canvas.drawCircle(Offset(bx, by), br, Paint()..color = const Color(0xFF111118));
+    canvas.drawCircle(Offset(bx, by), br, Paint()
+      ..color = _color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0);
+
+    final tp = TextPainter(
+      text: TextSpan(text: '$count', style: TextStyle(
+        color: _color, fontSize: 9, fontWeight: FontWeight.bold)),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    tp.paint(canvas, Offset(bx - tp.width / 2, by - tp.height / 2));
   }
 
   @override

@@ -24,14 +24,14 @@ class PlayerComponent extends PositionComponent with TapCallbacks {
 
   @override
   Future<void> onLoad() async {
-    try {
-      final path = 'assets/sprites/characters/${player.definitionId}_token.png';
-      final data  = await rootBundle.load(path);
-      final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
-      final frame = await codec.getNextFrame();
-      _tokenImage = frame.image;
-    } catch (_) {
-      // No image yet — renders placeholder
+    for (final suffix in ['_token.png', '_portrait.png']) {
+      try {
+        final data  = await rootBundle.load('assets/sprites/characters/${player.definitionId}$suffix');
+        final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
+        final frame = await codec.getNextFrame();
+        _tokenImage = frame.image;
+        break;
+      } catch (_) {}
     }
   }
 
@@ -58,11 +58,13 @@ class PlayerComponent extends PositionComponent with TapCallbacks {
     }
 
     if (_tokenImage != null) {
-      // Clip to circle and draw token image
       canvas.save();
       canvas.clipPath(Path()..addOval(Rect.fromCircle(center: center, radius: r - 1)));
-      final src = Rect.fromLTWH(0, 0,
-          _tokenImage!.width.toDouble(), _tokenImage!.height.toDouble());
+      // Cover-crop: take a square from the top-center (face area) of the portrait.
+      final imgW     = _tokenImage!.width.toDouble();
+      final imgH     = _tokenImage!.height.toDouble();
+      final cropSize = imgW.clamp(0.0, imgH);
+      final src      = Rect.fromLTWH((imgW - cropSize) / 2, 0, cropSize, cropSize);
       canvas.drawImageRect(_tokenImage!, src,
           Rect.fromCircle(center: center, radius: r - 1), Paint());
       canvas.restore();
@@ -77,7 +79,9 @@ class PlayerComponent extends PositionComponent with TapCallbacks {
       _renderPlaceholder(canvas, center, r);
     }
 
-    // Action pips
+    // Health pips (above token)
+    _renderHealthPips(canvas, r);
+    // Action pips (below token)
     _renderActionPips(canvas, r);
   }
 
@@ -101,13 +105,27 @@ class PlayerComponent extends PositionComponent with TapCallbacks {
     tp.paint(canvas, center - Offset(tp.width / 2, tp.height / 2));
   }
 
+  void _renderHealthPips(Canvas canvas, double r) {
+    const totalPips = 2;
+    const healthColor = Color(0xFFFF4466);
+    for (var i = 0; i < totalPips; i++) {
+      canvas.drawCircle(
+        Offset(r - 4 + i * 8.0, 4),
+        3.0,
+        Paint()..color = i < player.health
+            ? healthColor
+            : healthColor.withValues(alpha: 0.2),
+      );
+    }
+  }
+
   void _renderActionPips(Canvas canvas, double r) {
     for (var i = 0; i < 3; i++) {
       final filled = i < player.actionsRemaining;
       canvas.drawCircle(
         Offset(r - 8 + i * 8.0, _tokenSize - 5),
         2.5,
-        Paint()..color = filled ? _dangerColor : _dangerColor.withOpacity(0.2),
+        Paint()..color = filled ? _dangerColor : _dangerColor.withValues(alpha: 0.2),
       );
     }
   }

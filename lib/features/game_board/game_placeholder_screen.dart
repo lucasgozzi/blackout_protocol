@@ -69,7 +69,7 @@ class GamePlaceholderScreen extends ConsumerWidget {
                   _section('AMEAÇAS (${game.enemies.length})', game.enemies.isEmpty
                     ? ['Área limpa']
                     : game.enemies.map((e) =>
-                        '${e.definitionId}  hp:${e.currentHp}  (${e.x},${e.y})'
+                        '${e.definitionId}  hp:${e.currentHp}  zone:${e.zoneId}'
                       ).toList()),
                   _section('OBJETIVOS', game.objectives.map((o) =>
                     '${o.isCompleted ? "✓" : "○"}  ${o.description}'

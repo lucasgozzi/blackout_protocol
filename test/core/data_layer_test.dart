@@ -3,7 +3,7 @@ import 'package:blackout_protocol/data/asset_loader.dart';
 import 'package:blackout_protocol/data/enemy_catalog.dart';
 import 'package:blackout_protocol/data/campaign_repository.dart';
 import 'package:blackout_protocol/core/models/enemy.dart';
-import 'package:blackout_protocol/core/models/mission.dart';
+
 import 'package:blackout_protocol/core/models/campaign.dart';
 
 // FileAssetLoader reads from the filesystem root of the project.

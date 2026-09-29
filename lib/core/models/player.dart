@@ -34,8 +34,7 @@ class PlayerState with _$PlayerState {
   const factory PlayerState({
     required String playerId,
     required String definitionId,
-    required int x,
-    required int y,
+    @Default('') String zoneId,
     required int actionsRemaining,
     required int xp,
     required DangerLevel dangerLevel,
@@ -48,6 +47,9 @@ class PlayerState with _$PlayerState {
     @Default([]) List<String> unlockedAbilities,
     @Default(false) bool isEliminated,
     @Default(false) bool hasArmorVest,
+    // Health is tracked separately from dangerLevel (which is XP-based progression only).
+    @Default(2) int health,
+    @Default(false) bool resistanceUsedThisTurn,
   }) = _PlayerState;
 
   factory PlayerState.fromJson(Map<String, dynamic> json) =>

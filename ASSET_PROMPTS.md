@@ -308,7 +308,7 @@ Formato: losango (diamante) com borda colorida — para diferenciar de personage
 
 ### `drone_walker_token.png` — Walker básico, borda cinza
 ```
-diamond shaped tabletop game enemy token, corrupted military scout drone
+diamond shaped tabletop game enemy token sized 256×256 transparent background, corrupted military scout drone
 viewed from above, small hexagonal metallic body, cracked red sensor eye,
 sparking and damaged, inside a dark diamond shape with grey border,
 transparent background, bold readable at small size,
@@ -319,7 +319,7 @@ professional board game enemy token art
 
 ### `drone_runner_token.png` — Runner rápido, borda cinza claro
 ```
-diamond shaped tabletop game enemy token, fast attack drone
+diamond shaped tabletop game enemy token sized 256×256 transparent background, fast attack drone
 viewed from above, sleek elongated body with twin red sensors,
 thruster jets visible, inside a dark diamond with light grey border,
 transparent background, bold readable at small size,
@@ -418,3 +418,13 @@ assets/sprites/
 - Midjourney: use `--ar 1:1 --v 6 --style raw` para tiles realistas
 - Para tokens: `--ar 1:1 --v 6` funciona bem
 - Para portraits: `--ar 1:1 --v 6 --niji 6` para estilo anime
+
+
+
+Nova — Médica (Medic)
+
+Portrait of a determined woman in a post-apocalyptic sci-fi setting. She wears a worn field medic vest covered in improvised medical pouches, syringes, and bandages. Calm but intense expression, mid-30s, hair tied back. Dramatic front lighting. Transparent background. Half-body shot, slightly angled. Dark gritty aesthetic, high contrast. Digital painting style, game character art.
+
+Kai — Soldado (Soldier)
+
+Portrait of a heavily built male soldier in a post-apocalyptic sci-fi setting. He wears thick reinforced armor plates, a combat vest loaded with ammunition, and carries a heavy weapon. Shaved head, intense aggressive expression, late 30s, battle scars. Dramatic front lighting. Transparent background. Half-body shot, slightly angled. Dark gritty aesthetic, high contrast. Digital painting style, game character art.

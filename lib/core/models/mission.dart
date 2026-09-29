@@ -68,8 +68,8 @@ class MissionDefinition with _$MissionDefinition {
     required String title,
     required String description,
     required String mapAsset,             // path to Tiled .tmj file
-    required int maxAlertLevel,           // game over if exceeded
-    required int maxRounds,               // optional turn limit (0 = unlimited)
+    required int maxAlertLevel,           // spawn escalation cap (not a defeat condition)
+    required int maxRounds,               // optional round limit (0 = unlimited)
     required List<Objective> objectives,
     required List<SpawnPoint> spawnPoints,
     required List<SpawnRule> spawnRules,
@@ -80,6 +80,9 @@ class MissionDefinition with _$MissionDefinition {
     // Optional custom spawn deck — list of {type, count, enemyId} objects.
     // If absent, falls back to SpawnDeck.campaign01().
     @Default([]) List<Map<String, dynamic>> spawnDeck,
+    // Tutorial hints — list of {id, trigger, title, message} objects.
+    // Only present in tutorial missions. Empty = no tutorial.
+    @Default([]) List<Map<String, dynamic>> tutorialHints,
   }) = _MissionDefinition;
 
   factory MissionDefinition.fromJson(Map<String, dynamic> json) =>

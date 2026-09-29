@@ -47,6 +47,32 @@ class SkillSystem {
     return skills.any((s) => s.effect.type == SkillEffectType.healOnSearch);
   }
 
+  /// Whether this player has the healAlly skill unlocked.
+  static bool canHealAlly(PlayerState player) {
+    final skills = unlockedSkillsFor(player.definitionId, player.dangerLevel);
+    return skills.any((s) => s.effect.type == SkillEffectType.healAlly);
+  }
+
+  /// Whether this player has the areaHealAlly skill unlocked.
+  static bool canAreaHealAlly(PlayerState player) {
+    final skills = unlockedSkillsFor(player.definitionId, player.dangerLevel);
+    return skills.any((s) => s.effect.type == SkillEffectType.areaHealAlly);
+  }
+
+  /// Whether this player has the damageResistance skill unlocked.
+  static bool hasResistance(PlayerState player) {
+    final skills = unlockedSkillsFor(player.definitionId, player.dangerLevel);
+    return skills.any((s) => s.effect.type == SkillEffectType.damageResistance);
+  }
+
+  /// Damage dealt by the electric trap skill. Returns 0 if not unlocked.
+  static int electricTrapDamage(PlayerState player) {
+    final skills = unlockedSkillsFor(player.definitionId, player.dangerLevel);
+    return skills
+        .where((s) => s.effect.type == SkillEffectType.electricTrap)
+        .fold(0, (best, s) => s.effect.value > best ? s.effect.value : best);
+  }
+
   /// Check for level-up when XP changes. Adds newly-unlocked skill IDs and
   /// updates dangerLevel. Returns updated PlayerState + newly unlocked skills.
   static ({PlayerState player, List<SkillDefinition> newSkills}) applyXp(
@@ -68,16 +94,9 @@ class SkillSystem {
     return (player: updated, newSkills: gained);
   }
 
-  /// Apply heal-on-search: move danger level down one step.
-  static PlayerState applyHeal(PlayerState player) {
-    final healed = switch (player.dangerLevel) {
-      DangerLevel.red    => DangerLevel.orange,
-      DangerLevel.orange => DangerLevel.yellow,
-      DangerLevel.yellow => DangerLevel.blue,
-      DangerLevel.blue   => DangerLevel.blue,
-    };
-    return player.copyWith(dangerLevel: healed);
-  }
+  /// Restore 1 HP to a player (capped at max health of 2).
+  static PlayerState applyHeal(PlayerState player) =>
+      player.copyWith(health: (player.health + 1).clamp(0, 2));
 
   /// Emit level-up events to the game log.
   static GameState applyLevelUpLog(

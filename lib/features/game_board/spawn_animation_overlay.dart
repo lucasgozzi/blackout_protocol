@@ -145,21 +145,21 @@ class _SpawnCard extends StatelessWidget {
   static Color _tierColor(EnemyTier t) => switch (t) {
     EnemyTier.walker      => const Color(0xFFFF8800),
     EnemyTier.runner      => const Color(0xFFFFDD00),
-    EnemyTier.heavy       => const Color(0xFFFF4444),
+    EnemyTier.fatty       => const Color(0xFFFF4444),
     EnemyTier.abomination => const Color(0xFFFF0088),
   };
 
   static String _tierLabel(EnemyTier t) => switch (t) {
     EnemyTier.walker      => 'WALKER',
     EnemyTier.runner      => 'RUNNER',
-    EnemyTier.heavy       => 'HEAVY',
+    EnemyTier.fatty       => 'FATTY',
     EnemyTier.abomination => 'ABOMINAÇÃO',
   };
 
   static String _tierIcon(EnemyTier t) => switch (t) {
     EnemyTier.walker      => '🤖',
     EnemyTier.runner      => '⚡',
-    EnemyTier.heavy       => '💀',
+    EnemyTier.fatty       => '💀',
     EnemyTier.abomination => '☠️',
   };
 

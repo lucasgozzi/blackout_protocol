@@ -39,12 +39,12 @@
     { "id": "sp_south", "x": 5, "y": 12, "direction": "N" }
   ],
   "spawnRules": [
-    { "alertLevel": 1, "enemyId": "security_walker",  "count": 2, "spawnPointId": "sp_north" },
+    { "alertLevel": 1, "enemyId": "drone_walker",      "count": 2, "spawnPointId": "sp_north" },
     { "alertLevel": 2, "enemyId": "drone_walker",      "count": 2, "spawnPointId": "sp_west"  },
-    { "alertLevel": 4, "enemyId": "infected_walker",   "count": 3, "spawnPointId": "sp_south" },
+    { "alertLevel": 4, "enemyId": "drone_runner",      "count": 3, "spawnPointId": "sp_south" },
     { "alertLevel": 6, "enemyId": "drone_runner",      "count": 2, "spawnPointId": "sp_north" },
-    { "alertLevel": 7, "enemyId": "infected_heavy",    "count": 1, "spawnPointId": "sp_west"  },
-    { "alertLevel": 9, "enemyId": "security_walker",   "count": 3, "spawnPointId": "sp_south" }
+    { "alertLevel": 7, "enemyId": "drone_fatty",       "count": 1, "spawnPointId": "sp_west"  },
+    { "alertLevel": 9, "enemyId": "drone_fatty",       "count": 3, "spawnPointId": "sp_south" }
   ],
   "alertEvents": [
     {
@@ -57,10 +57,35 @@
       "triggerAlertLevel": 8,
       "description": "Protocolo de eliminação ativo. Drones reforçados.",
       "eventType": "spawn_wave",
-      "params": { "enemyId": "drone_runner", "count": 4, "spawnPointId": "sp_north" }
+      "params": { "enemyId": "drone_runner", "count": 2, "spawnPointId": "sp_north" }
     }
   ],
   "availablePlayers": ["scout_aria", "engineer_rex", "medic_nova", "soldier_kai"],
   "startingItems": { "pistol": 2, "medkit": 2, "emp_grenade": 1 },
-  "requiredCompletedMissions": ["c01_m01_fuel_depot"]
+  "requiredCompletedMissions": ["c01_m01_fuel_depot"],
+  "tutorialHints": [
+    {
+      "id": "m02_start",
+      "trigger": "mission_start",
+      "title": "Como vencer esta missão",
+      "message": "Plano em 3 passos:\n\n① Chegue até a Dra. Voss — ela está marcada no mapa. Use MOVER para se aproximar e ABRIR PORTA para entrar nas salas fechadas.\n② Com um operador na zona dela, use INTERAGIR para resgatá-la.\n③ Escorte a Dra. Voss até a zona de EXTRAÇÃO — ela segue o operador que a resgatou.\n\nDica: elimine inimigos no caminho antes de avançar. Armas barulhentas atraem mais.",
+      "icons": [
+        { "emoji": "👤", "color": "#00AAFF", "label": "Dra. Voss — use INTERAGIR para resgatá-la" },
+        { "emoji": "↑",  "color": "#00FF88", "label": "Zona de extração — leve todos (incluindo a Dra.) aqui" },
+        { "emoji": "💾", "color": "#00FF88", "label": "Servidor central — objetivo bônus, não obrigatório" }
+      ]
+    },
+    {
+      "id": "m02_first_attack",
+      "trigger": "first_attack",
+      "title": "Combate",
+      "message": "Atacar custa 1 ação e afeta todos os inimigos na zona. Cada dado da arma pode acertar — inimigos com 0 HP são eliminados.\n\nArmas barulhentas (pistola, shotgun) geram ruído extra e atraem inimigos distantes. Armas silenciosas (faca, EMP) não deixam rastro."
+    },
+    {
+      "id": "m02_first_open_door",
+      "trigger": "first_open_door",
+      "title": "Portas — cuidado com surpresas",
+      "message": "Abrir uma porta revela a zona vizinha — e os inimigos de lá podem te ver. Custa 1 ação.\n\nTática: antes de abrir, tente eliminar qualquer inimigo visível através da porta. Se não conseguir, esteja preparado para atacar no mesmo turno."
+    }
+  ]
 }

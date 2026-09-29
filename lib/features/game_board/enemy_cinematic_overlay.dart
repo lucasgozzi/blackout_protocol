@@ -57,17 +57,18 @@ class _EnemyCinematicOverlayState extends ConsumerState<EnemyCinematicOverlay>
     if (step is EnemyGroupMoveStep) {
       // Put every enemy back at its FROM position before sliding.
       for (final m in step.moves) {
-        widget.game.placeEnemyAt(m.instanceId, m.fromX, m.fromY);
+        final from = widget.game.worldPosForZone(m.fromZoneId);
+        widget.game.placeEnemyAt(m.instanceId, from.x, from.y);
       }
-      widget.game.showGroupTrails(step.moves.map((m) => (
-        instanceId: m.instanceId,
-        fx: m.fromX.toDouble(), fy: m.fromY.toDouble(),
-        tx: m.toX.toDouble(),   ty: m.toY.toDouble(),
-      )).toList());
-      await widget.game.slideGroupTo(step.moves.map((m) => (
-        instanceId: m.instanceId,
-        tx: m.toX, ty: m.toY,
-      )).toList());
+      widget.game.showGroupTrails(step.moves.map((m) {
+        final from = widget.game.worldPosForZone(m.fromZoneId);
+        final to   = widget.game.worldPosForZone(m.toZoneId);
+        return (instanceId: m.instanceId, fx: from.x, fy: from.y, tx: to.x, ty: to.y);
+      }).toList());
+      await widget.game.slideGroupTo(step.moves.map((m) {
+        final to = widget.game.worldPosForZone(m.toZoneId);
+        return (instanceId: m.instanceId, tx: to.x, ty: to.y);
+      }).toList());
       if (_skipped || !mounted) { _finish(); return; }
       await Future.delayed(const Duration(milliseconds: 350));
       widget.game.clearGroupTrails();
@@ -116,12 +117,16 @@ class _EnemyCinematicOverlayState extends ConsumerState<EnemyCinematicOverlay>
     widget.onComplete();
   }
 
-  (int, int) _worldPosOf(EnemyTurnStep step) => switch (step) {
-    SpawnStep s            => (s.worldX, s.worldY),
-    EnemyMoveStep s        => (s.toX, s.toY),
-    EnemyGroupMoveStep s   => (s.centerX, s.centerY),
-    EnemyAttackStep s      => (s.worldX, s.worldY),
-  };
+  (double, double) _worldPosOf(EnemyTurnStep step) {
+    final zoneId = switch (step) {
+      SpawnStep s          => s.zoneId,
+      EnemyMoveStep s      => s.toZoneId,
+      EnemyGroupMoveStep s => s.toZoneId,
+      EnemyAttackStep s    => s.zoneId,
+    };
+    final v = widget.game.worldPosForZone(zoneId);
+    return (v.x, v.y);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -325,21 +330,21 @@ class _SpawnCardWidgetState extends State<_SpawnCardWidget>
   static Color _tierColor(EnemyTier t) => switch (t) {
     EnemyTier.walker      => const Color(0xFFFF8800),
     EnemyTier.runner      => const Color(0xFFFFDD00),
-    EnemyTier.heavy       => const Color(0xFFFF4444),
+    EnemyTier.fatty       => const Color(0xFFFF4444),
     EnemyTier.abomination => const Color(0xFFFF0088),
   };
 
   static Color _tierColorOnLight(EnemyTier t) => switch (t) {
     EnemyTier.walker      => const Color(0xFFCC6600),
     EnemyTier.runner      => const Color(0xFFAA8800),
-    EnemyTier.heavy       => const Color(0xFFCC2222),
+    EnemyTier.fatty       => const Color(0xFFCC2222),
     EnemyTier.abomination => const Color(0xFFAA0066),
   };
 
   static String _tierLabel(EnemyTier t) => switch (t) {
     EnemyTier.walker      => 'WALKER',
     EnemyTier.runner      => 'RUNNER',
-    EnemyTier.heavy       => 'HEAVY',
+    EnemyTier.fatty       => 'FATTY',
     EnemyTier.abomination => 'ABOMINAÇÃO',
   };
 
@@ -418,7 +423,7 @@ class _SpawnCardWidgetState extends State<_SpawnCardWidget>
               switch (s.tier) {
                 EnemyTier.walker      => '🤖',
                 EnemyTier.runner      => '⚡',
-                EnemyTier.heavy       => '💀',
+                EnemyTier.fatty       => '💀',
                 EnemyTier.abomination => '☠️',
               },
               style: const TextStyle(fontSize: 22),

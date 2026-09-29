@@ -6,9 +6,13 @@ import 'package:go_router/go_router.dart';
 import '../../core/engine/enemy_turn_script.dart';
 import '../../core/engine/game_session_notifier.dart';
 import '../../core/models/game_state.dart';
+import '../../core/models/player.dart';
+import '../../core/models/skill.dart';
 import 'game_board_game.dart';
 import 'board_hud.dart';
 import 'enemy_cinematic_overlay.dart';
+import 'level_up_overlay.dart';
+import 'tutorial_hint_overlay.dart';
 
 class GameBoardScreen extends ConsumerStatefulWidget {
   const GameBoardScreen({super.key});
@@ -21,6 +25,9 @@ class _GameBoardScreenState extends ConsumerState<GameBoardScreen> {
   GameBoardGame?        _game;
   GameState?            _pendingSync;
   EnemyTurnScript?      _activeCinematic;
+  LevelUpEvent?         _levelUpEvent;
+  // Tracks last-known danger levels to detect transitions.
+  final Map<String, DangerLevel> _knownLevels = {};
 
   @override
   void initState() {
@@ -36,8 +43,8 @@ class _GameBoardScreenState extends ConsumerState<GameBoardScreen> {
     final game = GameBoardGame(
       gameState:           session.game,
       mission:             session.mission,
-      onMoveToZone:        (pid, zoneId, wx, wy) => notifier.movePlayer(pid, wx, wy),
-      onAttackZone:        (pid, wid, cx, cy) => notifier.attackZone(pid, wid, cx, cy),
+      onMoveToZone:        (pid, zoneId) => notifier.movePlayer(pid, zoneId),
+      onAttackZone:        (pid, wid, zoneId) => notifier.attackZone(pid, wid, zoneId),
       onSearch:            (pid, objId) => notifier.search(pid, objId),
       onInteract:          (pid, objId) => notifier.interact(pid, objId),
       onOpenDoor:          (pid, from, to) => notifier.openDoor(pid, from, to),
@@ -61,6 +68,29 @@ class _GameBoardScreenState extends ConsumerState<GameBoardScreen> {
     if (session == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
+
+    // Detect level-up transitions.
+    ref.listen(gameSessionProvider, (prev, next) {
+      if (prev == null || next == null) return;
+      for (final player in next.game.players) {
+        final prevLevel = _knownLevels[player.playerId];
+        final currLevel = player.dangerLevel;
+        if (prevLevel != null && prevLevel != currLevel) {
+          final unlocked = newlyUnlockedSkills(
+            player.definitionId, prevLevel, currLevel);
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              setState(() => _levelUpEvent = LevelUpEvent(
+                playerName:     player.definitionId,
+                newLevel:       currLevel,
+                unlockedSkills: unlocked,
+              ));
+            }
+          });
+        }
+        _knownLevels[player.playerId] = currLevel;
+      }
+    });
 
     // Trigger cinematic when a new script arrives.
     ref.listen(enemyCinematicProvider, (prev, next) {
@@ -86,11 +116,24 @@ class _GameBoardScreenState extends ConsumerState<GameBoardScreen> {
       if (outcome != GameOutcome.none && context.mounted) context.go('/result');
     });
 
+    final pendingHint = ref.watch(pendingHintProvider);
+
     return Scaffold(
       body: Stack(
         children: [
           if (_game != null) GameWidget(game: _game!),
           if (_game != null) SafeArea(child: BoardHud(game: _game!)),
+
+          // Tutorial hint modal — shown above HUD, below cinematic.
+          if (pendingHint != null && _activeCinematic == null)
+            TutorialHintOverlay(hint: pendingHint),
+
+          // Level-up notification banner.
+          if (_levelUpEvent != null)
+            LevelUpOverlay(
+              event: _levelUpEvent!,
+              onDismiss: () => setState(() => _levelUpEvent = null),
+            ),
 
           // Enemy phase cinematic — covers HUD, board stays visible underneath.
           if (_activeCinematic != null && _game != null)
@@ -108,7 +151,8 @@ class _GameBoardScreenState extends ConsumerState<GameBoardScreen> {
                       final p = s.game.players.firstWhere(
                         (p) => p.playerId == s.game.activePlayerId && !p.isEliminated,
                       );
-                      g.animateCameraTo(p.x.toDouble(), p.y.toDouble(), ms: 500);
+                      final pos = g.worldPosForZone(p.zoneId);
+                      g.animateCameraTo(pos.x, pos.y, ms: 500);
                     } catch (_) {}
                   }
                 },

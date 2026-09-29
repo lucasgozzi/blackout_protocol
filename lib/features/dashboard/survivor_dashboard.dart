@@ -355,8 +355,12 @@ class _SkillSlots extends StatelessWidget {
     SkillEffectType.extraAction   => Icons.bolt,
     SkillEffectType.freeOpenDoor  => Icons.door_front_door_outlined,
     SkillEffectType.healOnSearch  => Icons.medical_services_outlined,
-    SkillEffectType.areaAttack    => Icons.radar,
-    SkillEffectType.rangedBonus   => Icons.gps_fixed,
+    SkillEffectType.healAlly         => Icons.favorite_border,
+    SkillEffectType.areaHealAlly     => Icons.favorite,
+    SkillEffectType.damageResistance => Icons.security,
+    SkillEffectType.electricTrap     => Icons.electric_bolt,
+    SkillEffectType.areaAttack       => Icons.radar,
+    SkillEffectType.rangedBonus      => Icons.gps_fixed,
   };
 }
 
