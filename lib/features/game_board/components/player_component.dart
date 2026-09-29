@@ -79,10 +79,6 @@ class PlayerComponent extends PositionComponent with TapCallbacks {
       _renderPlaceholder(canvas, center, r);
     }
 
-    // Health pips (above token)
-    _renderHealthPips(canvas, r);
-    // Action pips (below token)
-    _renderActionPips(canvas, r);
   }
 
   void _renderPlaceholder(Canvas canvas, Offset center, double r) {
@@ -103,31 +99,6 @@ class PlayerComponent extends PositionComponent with TapCallbacks {
       textDirection: TextDirection.ltr,
     )..layout();
     tp.paint(canvas, center - Offset(tp.width / 2, tp.height / 2));
-  }
-
-  void _renderHealthPips(Canvas canvas, double r) {
-    const totalPips = 2;
-    const healthColor = Color(0xFFFF4466);
-    for (var i = 0; i < totalPips; i++) {
-      canvas.drawCircle(
-        Offset(r - 4 + i * 8.0, 4),
-        3.0,
-        Paint()..color = i < player.health
-            ? healthColor
-            : healthColor.withValues(alpha: 0.2),
-      );
-    }
-  }
-
-  void _renderActionPips(Canvas canvas, double r) {
-    for (var i = 0; i < 3; i++) {
-      final filled = i < player.actionsRemaining;
-      canvas.drawCircle(
-        Offset(r - 8 + i * 8.0, _tokenSize - 5),
-        2.5,
-        Paint()..color = filled ? _dangerColor : _dangerColor.withValues(alpha: 0.2),
-      );
-    }
   }
 
   static String _iconFor(String defId) {

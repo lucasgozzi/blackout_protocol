@@ -909,17 +909,17 @@ class _PlayerFabState extends State<_PlayerFab>
 
   @override
   Widget build(BuildContext context) {
-    final p       = widget.activePlayer;
-    final color   = _dangerColor(p);
-    final wounded = p.dangerLevel != DangerLevel.blue;
-    final bottom  = MediaQuery.of(context).padding.bottom + 110;
+    final p      = widget.activePlayer;
+    final color  = _dangerColor(p);
+    final isRed  = p.dangerLevel == DangerLevel.red;
+    final bottom = MediaQuery.of(context).padding.bottom + 110;
 
     return Positioned(
       right: 12,
       bottom: bottom,
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // Panels
           if (_showInventory)
@@ -940,7 +940,7 @@ class _PlayerFabState extends State<_PlayerFab>
           ],
           const SizedBox(height: 8),
 
-          // FAB circle
+          // Portrait with XP arc ring
           GestureDetector(
             onTap: () => setState(() {
               _showInventory = !_showInventory;
@@ -953,43 +953,74 @@ class _PlayerFabState extends State<_PlayerFab>
             }),
             child: AnimatedBuilder(
               animation: _pulse,
-              builder: (_, child) {
-                final borderW  = wounded ? 2.0 + _pulse.value * 2.0 : 2.0;
-                final glowR    = wounded ? 12.0 + _pulse.value * 10.0 : 12.0;
-                final glowA    = wounded ? 0.35 + _pulse.value * 0.3 : 0.35;
-                return Container(
-                  width: 64, height: 64,
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.15),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: color, width: borderW),
-                    boxShadow: [BoxShadow(
-                        color: color.withValues(alpha: glowA),
-                        blurRadius: glowR, spreadRadius: 1)],
+              builder: (_, __) {
+                final t       = _pulse.value;
+                final borderW = isRed ? 2.0 + t * 1.5 : 2.0;
+                final glowR   = isRed ? 10.0 + t * 8.0 : 8.0;
+                final glowA   = isRed ? 0.4 + t * 0.3 : 0.3;
+                return CustomPaint(
+                  painter: _XpArcPainter(player: p, pulse: t),
+                  child: SizedBox(
+                    width: 80, height: 80,
+                    child: Center(
+                      child: Container(
+                        width: 62, height: 62,
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: color, width: borderW),
+                          boxShadow: [BoxShadow(
+                              color: color.withValues(alpha: glowA),
+                              blurRadius: glowR, spreadRadius: 1)],
+                        ),
+                        child: ClipOval(
+                          child: Image.asset(
+                            'assets/sprites/characters/${p.definitionId}_token.png',
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) =>
+                                Icon(Icons.person, color: color, size: 28),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                  child: child,
                 );
               },
-              child: ClipOval(
-                child: Image.asset(
-                  'assets/sprites/characters/${p.definitionId}_token.png',
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) =>
-                      Icon(Icons.person, color: color, size: 32),
-                ),
-              ),
             ),
           ),
 
-          // Action pips
+          // Health pips
           const SizedBox(height: 5),
           Row(
             mainAxisSize: MainAxisSize.min,
-            children: List.generate(p.actionsRemaining.clamp(0, 3), (_) =>
-              Container(width: 9, height: 9,
-                  margin: const EdgeInsets.only(left: 4),
-                  decoration: BoxDecoration(shape: BoxShape.circle, color: color)),
-            ),
+            children: List.generate(2, (i) => Container(
+              width: 10, height: 10,
+              margin: const EdgeInsets.symmetric(horizontal: 2),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: i < p.health
+                    ? const Color(0xFFFF4466)
+                    : const Color(0xFFFF4466).withValues(alpha: 0.18),
+                boxShadow: i < p.health ? [const BoxShadow(
+                    color: Color(0x66FF4466), blurRadius: 4)] : null,
+              ),
+            )),
+          ),
+
+          // Action pips
+          const SizedBox(height: 4),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: List.generate(3, (i) => Container(
+              width: 9, height: 9,
+              margin: const EdgeInsets.symmetric(horizontal: 2),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: i < p.actionsRemaining
+                    ? color
+                    : color.withValues(alpha: 0.18),
+              ),
+            )),
           ),
         ],
       ),
@@ -1015,6 +1046,126 @@ class _PlayerFabState extends State<_PlayerFab>
       ),
     );
   }
+}
+
+// ---- XP arc ring painted around the portrait ----
+
+class _XpArcPainter extends CustomPainter {
+  final PlayerState player;
+  final double pulse;
+
+  const _XpArcPainter({required this.player, required this.pulse});
+
+  Color get _color => switch (player.dangerLevel) {
+    DangerLevel.blue   => const Color(0xFF00FF88),
+    DangerLevel.yellow => const Color(0xFFFFDD00),
+    DangerLevel.orange => const Color(0xFFFF8800),
+    DangerLevel.red    => const Color(0xFFFF2222),
+  };
+
+  // Progress within the current danger-level tier (0.0 → 1.0).
+  double get _tierProgress {
+    final xp = player.xp;
+    if (xp >= 43) return 1.0;
+    if (xp >= 19) return (xp - 19) / (43 - 19);
+    if (xp >= 7)  return (xp - 7)  / (19 - 7);
+    return xp / 7.0;
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center    = Offset(size.width / 2, size.height / 2);
+    final radius    = size.width / 2 - 3;
+    const strokeW   = 3.5;
+    const start     = -math.pi / 2;   // top
+    const fullSweep = 2 * math.pi;
+
+    // Background ring
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      start, fullSweep, false,
+      Paint()
+        ..color = Colors.white.withValues(alpha: 0.10)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = strokeW,
+    );
+
+    // Progress arc
+    final progress = _tierProgress;
+    final isMax    = player.xp >= 43;
+    final arcAlpha = isMax ? (0.7 + pulse * 0.3) : 1.0;
+    if (progress > 0) {
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        start, fullSweep * progress, false,
+        Paint()
+          ..color = _color.withValues(alpha: arcAlpha)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = strokeW
+          ..strokeCap = StrokeCap.round,
+      );
+    }
+
+    // Tier boundary ticks at 7 XP and 19 XP (mapped to absolute circle position).
+    // The arc shows tier progress, so ticks appear at the "end" position (progress=1).
+    // We draw them only when not yet at that tier.
+    _drawTick(canvas, center, radius, strokeW,
+        angle: start + fullSweep,          // end = next level
+        reached: false,
+        color: _color.withValues(alpha: 0.4));
+
+    // Small level label inside the arc area (bottom-center)
+    final label = _levelLabel(player.dangerLevel);
+    final xpText = isMax ? 'MAX' : '${player.xp} XP';
+    for (final (text, dy, fontSize, alpha) in [
+      (label,  -4.0, 9.0,  0.9),
+      (xpText,  8.0, 7.5,  0.65),
+    ]) {
+      final tp = TextPainter(
+        text: TextSpan(
+          text: text,
+          style: TextStyle(
+            color: _color.withValues(alpha: alpha),
+            fontSize: fontSize,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 0.5,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(canvas, Offset(
+        center.dx - tp.width / 2,
+        center.dy + dy,
+      ));
+    }
+  }
+
+  void _drawTick(Canvas canvas, Offset center, double radius, double strokeW,
+      {required double angle, required bool reached, required Color color}) {
+    final cos   = math.cos(angle);
+    final sin   = math.sin(angle);
+    final inner = Offset(center.dx + (radius - strokeW - 1) * cos,
+                         center.dy + (radius - strokeW - 1) * sin);
+    final outer = Offset(center.dx + (radius + strokeW + 1) * cos,
+                         center.dy + (radius + strokeW + 1) * sin);
+    canvas.drawLine(inner, outer, Paint()
+      ..color = color
+      ..strokeWidth = 1.5
+      ..strokeCap = StrokeCap.round);
+  }
+
+  static String _levelLabel(DangerLevel d) => switch (d) {
+    DangerLevel.blue   => 'AZUL',
+    DangerLevel.yellow => 'AMARELO',
+    DangerLevel.orange => 'LARANJA',
+    DangerLevel.red    => 'VERMELHO',
+  };
+
+  @override
+  bool shouldRepaint(_XpArcPainter old) =>
+      old.player.xp != player.xp ||
+      old.player.dangerLevel != player.dangerLevel ||
+      (old.pulse - pulse).abs() > 0.01;
 }
 
 // ---- Weapon strip shown above action buttons ----
