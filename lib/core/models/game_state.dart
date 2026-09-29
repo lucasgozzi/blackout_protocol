@@ -59,6 +59,7 @@ class ZoneCombatLog with _$ZoneCombatLog {
     required String targetZoneId,
     required List<int> rolls,
     required int hits,
+    required int hitValue,
     required List<String> eliminatedEnemyIds,
     required List<String> woundedSurvivorIds,
     required int xpGained,

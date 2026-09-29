@@ -149,6 +149,7 @@ class CombatRules {
       targetZoneId:       targetZoneId,
       rolls:              rolls,
       hits:               hitCount,
+      hitValue:           weapon.hitValue,
       eliminatedEnemyIds: eliminatedEnemyIds,
       woundedSurvivorIds: woundedSurvivorIds,
       xpGained:           totalXp,
@@ -234,13 +235,22 @@ class CombatRules {
     return _TargetPriority.walker;
   }
 
-  EnemyDefinition _fakeDef(EnemyInstance e) => EnemyDefinition(
-    id: e.definitionId, name: e.definitionId,
-    type: EnemyType.corruptedDrone,
-    tier: _tierEnum(e.definitionId),
-    hp: e.currentHp, damage: 1, actions: 1,
-    activationPriority: 1, spriteId: '',
-  );
+  EnemyDefinition _fakeDef(EnemyInstance e) {
+    final tier = _tierEnum(e.definitionId);
+    final dtk = switch (tier) {
+      EnemyTier.fatty       => 2,
+      EnemyTier.abomination => 999,
+      _                     => 1,
+    };
+    return EnemyDefinition(
+      id: e.definitionId, name: e.definitionId,
+      type: EnemyType.corruptedDrone,
+      tier: tier,
+      hp: e.currentHp, damage: 1, actions: 1,
+      activationPriority: 1, spriteId: '',
+      damageToKill: dtk,
+    );
+  }
 
   EnemyTier _tierEnum(String id) {
     if (id.contains('abomination')) return EnemyTier.abomination;

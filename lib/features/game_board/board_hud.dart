@@ -152,7 +152,6 @@ class _DiceRollToast extends StatefulWidget {
 
 class _DiceRollToastState extends State<_DiceRollToast>
     with TickerProviderStateMixin {
-  static const _hitThreshold = 4;
   static const _rollDuration  = Duration(milliseconds: 600);
   static const _staggerMs     = 100;
   static const _holdDuration  = Duration(seconds: 3);
@@ -274,7 +273,7 @@ class _DiceRollToastState extends State<_DiceRollToast>
                 children: List.generate(log.rolls.length, (i) =>
                     _DieWidget(
                       finalValue: log.rolls[i],
-                      isHit: log.rolls[i] >= _hitThreshold,
+                      isHit: log.rolls[i] >= log.hitValue,
                       settled: _settled[i],
                       spinAnim: _spin[i],
                     )),

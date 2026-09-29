@@ -12,7 +12,6 @@ class ZoneOverlayComponent extends PositionComponent with TapCallbacks {
   final VoidCallback onTap;
 
   ZoneHighlight _highlight    = ZoneHighlight.none;
-  int           _enemyCount   = 0;
   bool          _hasObjective = false;
   bool          _isSpawnZone  = false;
 
@@ -28,11 +27,9 @@ class ZoneOverlayComponent extends PositionComponent with TapCallbacks {
   void setHighlight(ZoneHighlight h) => _highlight = h;
 
   void setZoneInfo({
-    required int enemyCount,
     required bool hasObjective,
     required bool isSpawnZone,
   }) {
-    _enemyCount   = enemyCount;
     _hasObjective = hasObjective;
     _isSpawnZone  = isSpawnZone;
   }
@@ -114,35 +111,6 @@ class ZoneOverlayComponent extends PositionComponent with TapCallbacks {
         textDirection: TextDirection.ltr,
       )..layout();
       tp.paint(canvas, Offset(4, size.y - tp.height - 4));
-    }
-
-    // ---- Enemy counter — large badge bottom-left ----
-    if (_enemyCount > 0) {
-      final color = _enemyCount >= 3 ? const Color(0xFFFF2222) : const Color(0xFFFF8800);
-      final bg    = _enemyCount >= 3 ? const Color(0xCC330000) : const Color(0xCC221100);
-      final label = '✕$_enemyCount';
-      final tp = TextPainter(
-        text: TextSpan(text: label, style: TextStyle(
-          color: color,
-          fontSize: size.x * 0.25,
-          fontWeight: FontWeight.bold,
-          fontFamily: 'monospace',
-        )),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      final badgeW = tp.width + 10;
-      final badgeH = tp.height + 6;
-      final badgeX = 4.0;
-      final badgeY = size.y - badgeH - 4;
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(badgeX, badgeY, badgeW, badgeH), const Radius.circular(4)),
-        Paint()..color = bg);
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(badgeX, badgeY, badgeW, badgeH), const Radius.circular(4)),
-        Paint()..color = color..style = PaintingStyle.stroke..strokeWidth = 1.2);
-      tp.paint(canvas, Offset(badgeX + 5, badgeY + 3));
     }
 
     // Zone name (small, subtle — only on highlighted)

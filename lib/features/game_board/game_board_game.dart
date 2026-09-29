@@ -333,14 +333,6 @@ class GameBoardGame extends FlameGame with TapCallbacks, ScaleDetector {
   }
 
   void _syncZoneInfo() {
-    // Build enemy count per zone id.
-    final enemyCountByZone = <String, int>{};
-    for (final e in gameState.enemies) {
-      if (e.zoneId.isNotEmpty) {
-        enemyCountByZone[e.zoneId] = (enemyCountByZone[e.zoneId] ?? 0) + 1;
-      }
-    }
-
     final spawnZones = _mapData.globalSpawnZoneIds.toSet();
 
     for (final entry in _zoneOverlays.entries) {
@@ -354,7 +346,6 @@ class GameBoardGame extends FlameGame with TapCallbacks, ScaleDetector {
           )));
 
       entry.value.setZoneInfo(
-        enemyCount:   enemyCountByZone[zoneId] ?? 0,
         hasObjective: hasObj,
         isSpawnZone:  spawnZones.contains(zoneId),
       );
@@ -429,14 +420,23 @@ class GameBoardGame extends FlameGame with TapCallbacks, ScaleDetector {
       }
     }
 
-    // Group by (definitionId, zoneId): only the first instance per group is
-    // visible; others are hidden. The visible one shows the group count.
-    final seen = <String>{};
-    final groupCount = <String, int>{};
+    // Group by (definitionId@zoneId): one visible token per type per zone,
+    // showing its count. Different types in the same zone are offset
+    // horizontally so they don't overlap.
+    final groupCount  = <String, int>{};
+    final zoneTypes   = <String, List<String>>{};  // zoneId -> ordered defIds
     for (final e in gameState.enemies) {
       final key = '${e.definitionId}@${e.zoneId}';
-      groupCount[key] = (groupCount[key] ?? 0) + 1;
+      if (groupCount.containsKey(key)) {
+        groupCount[key] = groupCount[key]! + 1;
+      } else {
+        groupCount[key] = 1;
+        (zoneTypes[e.zoneId] ??= []).add(e.definitionId);
+      }
     }
+
+    const spacing = BoardConstants.pieceSize * 0.7;
+    final seen = <String>{};
     for (final e in gameState.enemies) {
       final key  = '${e.definitionId}@${e.zoneId}';
       final comp = _enemies[e.instanceId];
@@ -445,6 +445,15 @@ class GameBoardGame extends FlameGame with TapCallbacks, ScaleDetector {
         seen.add(key);
         comp.isVisible = true;
         comp.count     = groupCount[key]!;
+
+        // Offset horizontally within the zone so each type is distinct.
+        final types    = zoneTypes[e.zoneId]!;
+        final idx      = types.indexOf(e.definitionId);
+        final total    = types.length;
+        final offsetX  = (idx - (total - 1) / 2.0) * spacing;
+        if (!freezeEnemySync) {
+          comp.position = worldPosForZone(e.zoneId) + Vector2(offsetX, 0);
+        }
       } else {
         comp.isVisible = false;
         comp.count     = 1;

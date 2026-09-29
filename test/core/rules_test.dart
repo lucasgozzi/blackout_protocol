@@ -21,6 +21,7 @@ PlayerState _player({
   DangerLevel danger = DangerLevel.blue,
   bool eliminated = false,
   int health = 2,
+  int movementRange = 3,
 }) =>
     PlayerState(
       playerId: id,
@@ -31,13 +32,17 @@ PlayerState _player({
       dangerLevel: danger,
       isEliminated: eliminated,
       health: health,
+      movementRange: movementRange,
     );
 
-WeaponDefinition _weapon({int dice = 1, int hitValue = 4, int damage = 1}) =>
+WeaponDefinition _weapon({
+  int dice = 1, int hitValue = 4, int damage = 1, bool canHurtAbomination = false,
+}) =>
     WeaponDefinition(
       id: 'test_gun', name: 'Test', type: WeaponType.melee,
       minRange: 0, maxRange: 2, dice: dice, hitValue: hitValue, damage: damage,
       hands: 1, isNoisy: false, isConsumable: false,
+      canHurtAbomination: canHurtAbomination,
     );
 
 EnemyInstance _enemyInst({
@@ -142,7 +147,7 @@ void main() {
     });
 
     test('player with 1 action reaches direct neighbours only', () {
-      final p = _player(zoneId: 'zone_b', actions: 1);
+      final p = _player(zoneId: 'zone_b', actions: 1, movementRange: 1);
       final result = MovementRules.reachableZones(p, map);
       expect(result, containsAll(['zone_a', 'zone_c']));
       expect(result.length, 2);
@@ -229,7 +234,7 @@ void main() {
         players: [_player(xp: 0)],
         enemies: [_enemyInst(defId: 'drone_abomination', hp: 1, zoneId: 'zone_b')],
       );
-      final result = rules.attackZone(state, 'p1', _weapon(), 'zone_b');
+      final result = rules.attackZone(state, 'p1', _weapon(canHurtAbomination: true, damage: 999), 'zone_b');
 
       expect(result.log.xpGained, 5);
     });
