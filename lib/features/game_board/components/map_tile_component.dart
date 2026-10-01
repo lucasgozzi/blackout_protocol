@@ -22,6 +22,7 @@ class MapTileComponent extends PositionComponent with TapCallbacks {
 
   @override
   Future<void> onLoad() async {
+    if (imageName.isEmpty) return; // background image handles rendering
     try {
       final path = 'assets/sprites/tiles/$imageName.png';
       final data  = await rootBundle.load(path);
@@ -44,8 +45,8 @@ class MapTileComponent extends PositionComponent with TapCallbacks {
     if (_loaded && _image != null) {
       final src = Rect.fromLTWH(0, 0, _image!.width.toDouble(), _image!.height.toDouble());
       canvas.drawImageRect(_image!, src, rect, Paint());
-    } else {
-      // Placeholder while images not generated yet
+    } else if (imageName.isNotEmpty) {
+      // Placeholder while individual tile images are not generated yet
       _renderPlaceholder(canvas, rect);
     }
   }

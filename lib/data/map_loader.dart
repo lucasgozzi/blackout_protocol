@@ -74,11 +74,17 @@ class MapData {
   final List<MapTile> tiles;
   final int tilePixelSize;      // pixels per tile on screen
   final List<String> globalSpawnZoneIds;
+  final String? background;     // single map image (e.g. "map_01"), null = use per-tile images
+  final int gridCols;           // total grid width for background sizing (0 = auto from tiles)
+  final int gridRows;           // total grid height for background sizing (0 = auto from tiles)
 
   const MapData({
     required this.tiles,
     required this.tilePixelSize,
     required this.globalSpawnZoneIds,
+    this.background,
+    this.gridCols = 0,
+    this.gridRows = 0,
   });
 
   MapTile? tileById(String id) {
@@ -90,6 +96,17 @@ class MapData {
   ({double x, double y, double w, double h}) tileWorldRect(MapTile tile) {
     final s = tilePixelSize.toDouble();
     return (x: tile.gridX * s, y: tile.gridY * s, w: s, h: s);
+  }
+
+  /// World-space rect of a zone (in pixels).
+  ({double x, double y, double w, double h}) zoneWorldRect(MapTile tile, TileZone zone) {
+    final r = tileWorldRect(tile);
+    return (
+      x: r.x + zone.rect.x * r.w,
+      y: r.y + zone.rect.y * r.h,
+      w: zone.rect.w * r.w,
+      h: zone.rect.h * r.h,
+    );
   }
 
   /// World-space center of a zone.
@@ -117,10 +134,12 @@ class MapData {
 
   /// Adjacent zones reachable from [fromZoneId].
   /// [openDoorKeys] comes from GameState.openDoors — format "zoneA|zoneB".
+  /// [ignoreDoors] treats all door connections as passable (used for enemy AI).
   /// Never mutates MapData — doors are tracked in GameState.
   List<({MapTile tile, TileZone zone})> adjacentZones(
     String fromZoneId, {
     List<String> openDoorKeys = const [],
+    bool ignoreDoors = false,
   }) {
     final src = findZone(fromZoneId);
     if (src == null) return [];
@@ -128,7 +147,9 @@ class MapData {
     final result = <({MapTile tile, TileZone zone})>[];
 
     bool doorOpen(String a, String b) =>
-        openDoorKeys.contains('$a|$b') || openDoorKeys.contains('$b|$a');
+        ignoreDoors ||
+        openDoorKeys.contains('$a|$b') ||
+        openDoorKeys.contains('$b|$a');
 
     for (final conn in src.tile.connections) {
       if (conn.fromZone != fromZoneId) continue;
@@ -231,11 +252,17 @@ class MapLoader {
     final tiles = rawTiles.map((t) => _parseTile(t as Map<String, dynamic>)).toList();
 
     final spawnZones = (json['spawnZones'] as List? ?? []).cast<String>();
+    final background = json['background'] as String?;
+    final gridCols   = (json['gridCols'] as int?) ?? 0;
+    final gridRows   = (json['gridRows'] as int?) ?? 0;
 
     return MapData(
       tiles: tiles,
       tilePixelSize: tilePixelSize,
       globalSpawnZoneIds: spawnZones,
+      background: background,
+      gridCols: gridCols,
+      gridRows: gridRows,
     );
   }
 

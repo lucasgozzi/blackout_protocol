@@ -113,6 +113,13 @@ class CombatRules {
         continue;
       }
 
+      // Minimum damage threshold (e.g. heavy requires damage ≥ 2).
+      if (weapon.damage < def.damageToKill) {
+        logLines.add('✗ ${def.name} resiste — dano insuficiente (${weapon.damage} < ${def.damageToKill})');
+        hits--;
+        continue;
+      }
+
       // Apply damage to HP; kill when HP reaches 0.
       final dmg = weapon.damage;
       final idx = updatedEnemies.indexWhere((e) => e.instanceId == enemy.instanceId);
