@@ -34,7 +34,17 @@ class ItemComponent extends PositionComponent {
           anchor: Anchor.center,
         );
 
+  bool _hidden = false;
   void setCollected(bool collected) => _collected = collected;
+  void setHidden(bool hidden) => _hidden = hidden;
+
+  static bool hasKnownIcon(String tag) =>
+      tag.contains('fuel') ||
+      tag.contains('extraction') ||
+      tag.contains('scientist') ||
+      tag.contains('server') ||
+      tag.contains('antenna') ||
+      tag.contains('datapad');
 
   String get _icon {
     if (tag.contains('fuel'))       return '⛽';
@@ -55,25 +65,30 @@ class ItemComponent extends PositionComponent {
 
   @override
   void render(Canvas canvas) {
-    if (_collected) return;
+    if (_hidden) return;
+    final cx = _displaySize / 2;
+    final cy = _displaySize / 2;
 
-    final cx = BoardConstants.tileSize / 2;
-    final cy = BoardConstants.tileSize / 2;
+    if (_collected) {
+      final tp = TextPainter(
+        text: TextSpan(text: '📦', style: TextStyle(fontSize: _displaySize)),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(canvas, Offset(cx - tp.width / 2, cy - tp.height / 2));
+      return;
+    }
 
     // Glow ring.
     canvas.drawCircle(
-      Offset(cx, cy), 12,
+      Offset(cx, cy), _displaySize * 0.4,
       Paint()
-        ..color = _color.withOpacity(0.15)
+        ..color = _color.withValues(alpha: 0.15)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
     );
 
     // Icon.
     final tp = TextPainter(
-      text: TextSpan(
-        text: _icon,
-        style: const TextStyle(fontSize: 16),
-      ),
+      text: TextSpan(text: _icon, style: TextStyle(fontSize: _displaySize)),
       textDirection: TextDirection.ltr,
     )..layout();
     tp.paint(canvas, Offset(cx - tp.width / 2, cy - tp.height / 2));

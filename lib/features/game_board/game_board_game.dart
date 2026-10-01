@@ -14,6 +14,7 @@ import '../../core/rules/skill_system.dart';
 import '../../data/map_loader.dart';
 import '../../data/asset_loader.dart';
 import 'board_constants.dart';
+import 'components/map_background_component.dart';
 import 'components/map_tile_component.dart';
 import 'components/zone_overlay_component.dart';
 import 'components/player_component.dart';
@@ -225,7 +226,9 @@ class GameBoardGame extends FlameGame with TapCallbacks, ScaleDetector {
 
     await _buildMap();
     _buildZoneOverlays();
+    _syncDoors();
     _buildItems();
+    _syncZoneInfo();
     _syncPieces();
     _centerCamera();
     _autoSelectActivePlayer();
@@ -244,6 +247,7 @@ class GameBoardGame extends FlameGame with TapCallbacks, ScaleDetector {
     _syncPieces();
     _syncItems();
     _syncZoneInfo();
+    _syncDoors();
 
     final activeChanged = newState.activePlayerId != prevActiveId;
     if (activeChanged || _selectedPlayerId == null) {
@@ -276,6 +280,21 @@ class GameBoardGame extends FlameGame with TapCallbacks, ScaleDetector {
   // ---- Map rendering ----
 
   Future<void> _buildMap() async {
+    // Single background image (replaces per-tile images when specified).
+    if (_mapData.background != null) {
+      final cols = _mapData.gridCols > 0
+          ? _mapData.gridCols
+          : (_mapData.tiles.map((t) => t.gridX).reduce((a, b) => a > b ? a : b) + 1);
+      final rows = _mapData.gridRows > 0
+          ? _mapData.gridRows
+          : (_mapData.tiles.map((t) => t.gridY).reduce((a, b) => a > b ? a : b) + 1);
+      final s = _mapData.tilePixelSize.toDouble();
+      _world.add(MapBackgroundComponent(
+        mapId: _mapData.background!,
+        size:  Vector2(cols * s, rows * s),
+      ));
+    }
+
     for (final tile in _mapData.tiles) {
       final r = _mapData.tileWorldRect(tile);
       final comp = MapTileComponent(
@@ -317,14 +336,33 @@ class GameBoardGame extends FlameGame with TapCallbacks, ScaleDetector {
       final r = _mapData.tileWorldRect(tile);
       for (final zone in tile.zones) {
         if (zone.tags.isEmpty) continue;
-        final tag = zone.tags.firstWhere((t) => t != 'extraction_zone', orElse: () => '');
+        final isLootZone = zone.tags.contains('item');
+        final tag = zone.tags.firstWhere(
+          (t) => t != 'item',
+          orElse: () => '',
+        );
         if (tag.isEmpty) continue;
-        final center = _mapData.zoneCenter(tile, zone);
+        // Loot zones: only show icon if it's a recognizable item
+        if (isLootZone && !ItemComponent.hasKnownIcon(tag)) continue;
+        double worldX, worldY;
+        final double iconSz;
+        if (isLootZone) {
+          // Bottom-left corner, same size/position as the 📦 overlay
+          final zr = _mapData.zoneWorldRect(tile, zone);
+          iconSz = zr.w * 0.18;
+          worldX = zr.x + 4 + iconSz / 2;
+          worldY = zr.y + zr.h - iconSz / 2 - 4;
+        } else {
+          iconSz = _mapData.tilePixelSize * 0.15;
+          final center = _mapData.zoneCenter(tile, zone);
+          worldX = center.x;
+          worldY = center.y;
+        }
         final comp = ItemComponent.world(
-          worldX: center.x,
-          worldY: center.y,
+          worldX: worldX,
+          worldY: worldY,
           tag: tag,
-          size: _mapData.tilePixelSize * 0.15,
+          size: iconSz,
         );
         _items[zone.id] = comp;
         _world.add(comp);
@@ -336,41 +374,176 @@ class GameBoardGame extends FlameGame with TapCallbacks, ScaleDetector {
     final spawnZones = _mapData.globalSpawnZoneIds.toSet();
 
     for (final entry in _zoneOverlays.entries) {
-      final zoneId = entry.key;
-      final found  = _mapData.findZone(zoneId);
-      final hasObj = found != null && found.zone.tags.any((t) =>
-          gameState.objectives.any((o) => !o.isCompleted && (
-            o.params['itemId'] == t ||
-            o.params['targetTileTag'] == t ||
-            o.id == t
-          )));
+      final zoneId   = entry.key;
+      final found    = _mapData.findZone(zoneId);
+      final revealed = _isZoneRevealed(zoneId);
 
+      final hasObj = revealed && found != null && found.zone.tags.any((t) =>
+          gameState.objectives.any((o) {
+            if (o.isCompleted) return false;
+            final matches = o.params['itemId'] == t ||
+                o.params['targetTileTag'] == t ||
+                o.id == t;
+            if (!matches) return false;
+            // Count-based: only show objective marker if this zone isn't depleted.
+            final collectedZones =
+                (o.params['collectedZones'] as List?)?.cast<String>() ?? [];
+            return !collectedZones.contains(zoneId);
+          }));
+
+      final isSearchable  = revealed && found != null && found.zone.tags.contains('item');
+      final hasKnownItem  = isSearchable && found != null &&
+          found.zone.tags.any((t) => t != 'item' && ItemComponent.hasKnownIcon(t));
       entry.value.setZoneInfo(
         hasObjective: hasObj,
         isSpawnZone:  spawnZones.contains(zoneId),
+        isSearchable: isSearchable,
+        hasKnownItem: hasKnownItem,
       );
     }
   }
 
   void _syncItems() {
     for (final entry in _items.entries) {
-      final found = _mapData.findZone(entry.key);
+      final zoneId = entry.key;
+      final found  = _mapData.findZone(zoneId);
       if (found == null) continue;
-      final collected = found.zone.tags.any((tag) =>
-          gameState.objectives.any((o) => o.isCompleted && (
-            o.params['itemId'] == tag ||
-            o.params['targetTileTag'] == tag ||
-            o.id == tag
-          )));
+
+      // Hide item entirely if zone is behind closed doors (not yet revealed).
+      if (!_isZoneRevealed(zoneId)) {
+        entry.value.setHidden(true);
+        continue;
+      }
+      entry.value.setHidden(false);
+
+      final collected = found.zone.tags.any((tag) {
+        for (final o in gameState.objectives) {
+          final matches = o.params['itemId'] == tag ||
+              o.params['targetTileTag'] == tag ||
+              o.id == tag;
+          if (!matches) continue;
+
+          // Count-based: only deplete this zone if it's in collectedZones.
+          final collectedZones =
+              (o.params['collectedZones'] as List?)?.cast<String>() ?? [];
+          if (collectedZones.contains(zoneId)) return true;
+
+          // Simple (non-count) objective: deplete when completed.
+          if (o.isCompleted && collectedZones.isEmpty) return true;
+        }
+        return false;
+      });
+
       entry.value.setCollected(collected);
     }
   }
+
+  /// A zone is revealed if it has any non-door connection OR at least one
+  /// of its door connections is open. Outdoor/street/extraction zones are
+  /// always revealed. This controls item visibility for door-gated rooms.
+  bool _isZoneRevealed(String zoneId) {
+    final found = _mapData.findZone(zoneId);
+    if (found == null) return true;
+    if (found.zone.type == ZoneType.outdoor   ||
+        found.zone.type == ZoneType.street    ||
+        found.zone.type == ZoneType.extraction) return true;
+
+    final openDoors = gameState.openDoors;
+    bool hasOpenConnection = false;
+    bool hasAnyConnection  = false;
+    bool hasOpenDoor       = false;
+
+    for (final tile in _mapData.tiles) {
+      for (final conn in tile.connections) {
+        if (conn.fromZone != zoneId && conn.toZone != zoneId) continue;
+        hasAnyConnection = true;
+        if (conn.type != ConnectionType.door) {
+          hasOpenConnection = true;
+        } else {
+          final k1 = '${conn.fromZone}|${conn.toZone}';
+          final k2 = '${conn.toZone}|${conn.fromZone}';
+          if (openDoors.contains(k1) || openDoors.contains(k2)) hasOpenDoor = true;
+        }
+      }
+    }
+
+    if (!hasAnyConnection || hasOpenConnection) return true;
+    return hasOpenDoor;
+  }
+
+  /// Computes and applies door edge indicators to all zone overlays.
+  void _syncDoors() {
+    final openDoors    = gameState.openDoors;
+    final closedSides  = <String, Set<String>>{};
+    final openSides    = <String, Set<String>>{};
+
+    for (final tile in _mapData.tiles) {
+      for (final conn in tile.connections) {
+        if (conn.type != ConnectionType.door) continue;
+        final k1     = '${conn.fromZone}|${conn.toZone}';
+        final k2     = '${conn.toZone}|${conn.fromZone}';
+        final isOpen = openDoors.contains(k1) || openDoors.contains(k2);
+
+        final map = isOpen ? openSides : closedSides;
+        (map[conn.fromZone] ??= {}).add(conn.side);
+        (map[conn.toZone]   ??= {}).add(_reverseSide(conn.side));
+      }
+    }
+
+    for (final entry in _zoneOverlays.entries) {
+      entry.value.setDoors(
+        closedSides[entry.key] ?? {},
+        openSides[entry.key]   ?? {},
+      );
+    }
+  }
+
+  static String _reverseSide(String side) => switch (side) {
+    'north' => 'south',
+    'south' => 'north',
+    'east'  => 'west',
+    'west'  => 'east',
+    _       => side,
+  };
 
   // ---- Pieces ----
 
   void _syncPieces() {
     _syncPlayers();
     _syncEnemies();
+    _separatePiecesAcrossTypes();
+  }
+
+  /// When players and enemies share a zone, push players up and enemies down
+  /// so they don't overlap each other.
+  void _separatePiecesAcrossTypes() {
+    final playerZones = <String>{};
+    for (final p in gameState.players) {
+      if (!p.isEliminated) playerZones.add(p.zoneId);
+    }
+
+    final mixed = gameState.enemies
+        .map((e) => e.zoneId)
+        .where(playerZones.contains)
+        .toSet();
+    if (mixed.isEmpty) return;
+
+    // Player radius ≈ 20, enemy radius ≈ 36 → need > 56px center distance
+    const playerYShift = -32.0;
+    const enemyYShift  =  28.0;
+
+    for (final zoneId in mixed) {
+      for (final p in gameState.players) {
+        if (p.isEliminated || p.zoneId != zoneId) continue;
+        final comp = _players[p.playerId];
+        if (comp != null) comp.position += Vector2(0, playerYShift);
+      }
+      for (final e in gameState.enemies) {
+        if (e.zoneId != zoneId) continue;
+        final comp = _enemies[e.instanceId];
+        if (comp != null && comp.isVisible) comp.position += Vector2(0, enemyYShift);
+      }
+    }
   }
 
   void _syncPlayers() {
@@ -380,22 +553,35 @@ class GameBoardGame extends FlameGame with TapCallbacks, ScaleDetector {
     }
     for (final p in gameState.players) {
       if (p.isEliminated) { _players[p.playerId]?.removeFromParent(); _players.remove(p.playerId); continue; }
-      final worldPos = worldPosForZone(p.zoneId);
       if (_players.containsKey(p.playerId)) {
         _players[p.playerId]!.updateState(p);
-        _players[p.playerId]!.position = worldPos;
       } else {
         final comp = PlayerComponent(
           player: p,
           isActive: p.playerId == gameState.activePlayerId,
           onTap: () => _onPlayerTapped(p.playerId),
         );
-        comp.position = worldPos;
         _players[p.playerId] = comp;
         _world.add(comp);
       }
     }
     for (final e in _players.entries) e.value.setActive(e.key == gameState.activePlayerId);
+
+    // Spread players in the same zone so they don't stack
+    final zoneGroups = <String, List<String>>{};
+    for (final p in gameState.players) {
+      if (!p.isEliminated) (zoneGroups[p.zoneId] ??= []).add(p.playerId);
+    }
+    const spacing = 34.0;
+    for (final entry in zoneGroups.entries) {
+      final group = entry.value;
+      for (var i = 0; i < group.length; i++) {
+        final comp = _players[group[i]];
+        if (comp == null) continue;
+        final offsetX = (i - (group.length - 1) / 2.0) * spacing;
+        comp.position = worldPosForZone(entry.key) + Vector2(offsetX, 0);
+      }
+    }
   }
 
   void _syncEnemies() {
@@ -512,12 +698,16 @@ class GameBoardGame extends FlameGame with TapCallbacks, ScaleDetector {
       final found = _mapData.findZone(zoneId);
       if (found == null) return false;
       final tags = found.zone.tags;
-      final hasObjective = tags.any((t) => gameState.objectives.any((o) =>
-        !o.isCompleted && (
-          o.params['itemId'] == t ||
-          o.params['targetTileTag'] == t ||
-          o.id == t
-        )));
+      final hasObjective = tags.any((t) => gameState.objectives.any((o) {
+        if (o.isCompleted) return false;
+        final matches = o.params['itemId'] == t ||
+            o.params['targetTileTag'] == t ||
+            o.id == t;
+        if (!matches) return false;
+        final collectedZones =
+            (o.params['collectedZones'] as List?)?.cast<String>() ?? [];
+        return !collectedZones.contains(zoneId);
+      }));
       return hasObjective || tags.contains('item');
     } catch (_) {
       return false;
@@ -537,15 +727,19 @@ class GameBoardGame extends FlameGame with TapCallbacks, ScaleDetector {
     if (found == null) return;
 
     // Find a matching uncompleted objective by zone tag.
+    // For count-based objectives, also check this zone hasn't been depleted.
     String? objId;
     for (final tag in found.zone.tags) {
-      final match = gameState.objectives.where((o) =>
-        !o.isCompleted && (
-          o.params['itemId'] == tag ||
-          o.params['targetTileTag'] == tag ||
-          o.id == tag
-        )
-      ).firstOrNull;
+      final match = gameState.objectives.where((o) {
+        if (o.isCompleted) return false;
+        final matches = o.params['itemId'] == tag ||
+            o.params['targetTileTag'] == tag ||
+            o.id == tag;
+        if (!matches) return false;
+        final collectedZones =
+            (o.params['collectedZones'] as List?)?.cast<String>() ?? [];
+        return !collectedZones.contains(zoneId);
+      }).firstOrNull;
       if (match != null) { objId = match.id; break; }
     }
 

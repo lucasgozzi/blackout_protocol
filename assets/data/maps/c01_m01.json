@@ -1,182 +1,333 @@
 {
   "id": "c01_m01",
-  "tilePixelSize": 200,
+  "tilePixelSize": 209,
+  "gridCols": 6,
+  "gridRows": 6,
+  "background": "map_01",
   "tiles": [
     {
-      "id": "t_start",     "name": "Entrada",              "image": "tile_lab",
-      "gridX": 0, "gridY": 1,
-      "zones": [{ "id": "z_start",     "type": "indoor",     "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "id": "t_silos_n",    "name": "Silos Norte",         "image": "",
+      "gridX": 2, "gridY": 0,
+      "zones": [{ "id": "z_silos_n",    "name": "Silos Norte",         "type": "indoor",  "rect": {"x":0,"y":0,"w":1,"h":1} }],
       "connections": [
-        { "fromZone": "z_start",     "toTile": "t_corridor",  "toZone": "z_corridor",  "type": "open", "side": "east" },
-        { "fromZone": "z_start",     "toTile": "t_street_w",  "toZone": "z_street_w",  "type": "open", "side": "south" }
+        { "fromZone": "z_silos_n",    "toTile": "t_storage_n", "toZone": "z_storage_n", "type": "open", "side": "east" },
+        { "fromZone": "z_silos_n",    "toTile": "t_silos",     "toZone": "z_silos",     "type": "open", "side": "south" }
+      ],
+      "tags": {},
+      "playerStart": [],
+      "spawnPoints": []
+    },
+    {
+      "id": "t_storage_n",  "name": "Armazém Norte",       "image": "",
+      "gridX": 3, "gridY": 0,
+      "zones": [{ "id": "z_storage_n",  "name": "Armazém Norte",       "type": "indoor",  "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_storage_n",  "toTile": "t_silos_n",   "toZone": "z_silos_n",   "type": "open", "side": "west" },
+        { "fromZone": "z_storage_n",  "toTile": "t_storage",   "toZone": "z_storage",   "type": "open", "side": "south" }
+      ],
+      "tags": {},
+      "playerStart": [],
+      "spawnPoints": []
+    },
+    {
+      "id": "t_apartments", "name": "Apartamentos",         "image": "",
+      "gridX": 0, "gridY": 1,
+      "zones": [{ "id": "z_apartments", "name": "Apartamentos",         "type": "indoor",  "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_apartments", "toTile": "t_street_n",   "toZone": "z_street_n",  "type": "door", "side": "east" },
+        { "fromZone": "z_apartments", "toTile": "t_residential","toZone": "z_residential","type": "open", "side": "south" }
+      ],
+      "tags": { "z_apartments": ["medkit", "item"] },
+      "playerStart": [],
+      "spawnPoints": []
+    },
+    {
+      "id": "t_street_n",   "name": "Rua Norte",            "image": "",
+      "gridX": 1, "gridY": 1,
+      "zones": [{ "id": "z_street_n",   "name": "Rua Norte",            "type": "street",  "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_street_n",   "toTile": "t_apartments", "toZone": "z_apartments", "type": "door", "side": "west" },
+        { "fromZone": "z_street_n",   "toTile": "t_silos",      "toZone": "z_silos",      "type": "door", "side": "east" },
+        { "fromZone": "z_street_n",   "toTile": "t_crossroads", "toZone": "z_crossroads", "type": "open", "side": "south" }
+      ],
+      "tags": {},
+      "playerStart": [],
+      "spawnPoints": []
+    },
+    {
+      "id": "t_silos",      "name": "Silos",                "image": "",
+      "gridX": 2, "gridY": 1,
+      "zones": [{ "id": "z_silos",      "name": "Silos",                "type": "indoor",  "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_silos",      "toTile": "t_silos_n",    "toZone": "z_silos_n",    "type": "open", "side": "north" },
+        { "fromZone": "z_silos",      "toTile": "t_street_n",   "toZone": "z_street_n",   "type": "door", "side": "west" },
+        { "fromZone": "z_silos",      "toTile": "t_storage",    "toZone": "z_storage",    "type": "open", "side": "east" },
+        { "fromZone": "z_silos",      "toTile": "t_yard",       "toZone": "z_yard",       "type": "open", "side": "south" }
+      ],
+      "tags": { "z_silos": ["datapad_supervisor", "item"] },
+      "playerStart": [],
+      "spawnPoints": []
+    },
+    {
+      "id": "t_storage",    "name": "Armazém",              "image": "",
+      "gridX": 3, "gridY": 1,
+      "zones": [{ "id": "z_storage",    "name": "Armazém",              "type": "indoor",  "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_storage",    "toTile": "t_storage_n",  "toZone": "z_storage_n",  "type": "open", "side": "north" },
+        { "fromZone": "z_storage",    "toTile": "t_silos",      "toZone": "z_silos",      "type": "open", "side": "west" },
+        { "fromZone": "z_storage",    "toTile": "t_factory",    "toZone": "z_factory",    "type": "open", "side": "east" },
+        { "fromZone": "z_storage",    "toTile": "t_gas_n",      "toZone": "z_gas_n",      "type": "open", "side": "south" }
+      ],
+      "tags": {},
+      "playerStart": [],
+      "spawnPoints": []
+    },
+    {
+      "id": "t_factory",    "name": "Fábrica",              "image": "",
+      "gridX": 4, "gridY": 1,
+      "zones": [{ "id": "z_factory",    "name": "Fábrica",              "type": "indoor",  "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_factory",    "toTile": "t_storage",    "toZone": "z_storage",    "type": "open", "side": "west" },
+        { "fromZone": "z_factory",    "toTile": "t_spawn_ne",   "toZone": "z_spawn_ne",   "type": "door", "side": "east" },
+        { "fromZone": "z_factory",    "toTile": "t_gas_station","toZone": "z_gas_station","type": "door", "side": "south" }
+      ],
+      "tags": { "z_factory": ["emp_grenade", "item"] },
+      "playerStart": [],
+      "spawnPoints": []
+    },
+    {
+      "id": "t_spawn_ne",   "name": "Entrada Nordeste",     "image": "",
+      "gridX": 5, "gridY": 1,
+      "zones": [{ "id": "z_spawn_ne",   "name": "Entrada Nordeste",     "type": "street",  "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_spawn_ne",   "toTile": "t_factory",    "toZone": "z_factory",    "type": "door", "side": "west" },
+        { "fromZone": "z_spawn_ne",   "toTile": "t_spawn_e",    "toZone": "z_spawn_e",    "type": "open", "side": "south" }
+      ],
+      "tags": {},
+      "playerStart": [],
+      "spawnPoints": ["z_spawn_ne"]
+    },
+    {
+      "id": "t_residential","name": "Residencial",          "image": "",
+      "gridX": 0, "gridY": 2,
+      "zones": [{ "id": "z_residential","name": "Residencial",          "type": "indoor",  "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_residential","toTile": "t_apartments",  "toZone": "z_apartments", "type": "open", "side": "north" },
+        { "fromZone": "z_residential","toTile": "t_crossroads",  "toZone": "z_crossroads", "type": "door", "side": "east" },
+        { "fromZone": "z_residential","toTile": "t_alley",       "toZone": "z_alley",      "type": "open", "side": "south" }
+      ],
+      "tags": {},
+      "playerStart": [],
+      "spawnPoints": []
+    },
+    {
+      "id": "t_crossroads", "name": "Cruzamento",           "image": "",
+      "gridX": 1, "gridY": 2,
+      "zones": [{ "id": "z_crossroads", "name": "Cruzamento",           "type": "street",  "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_crossroads", "toTile": "t_street_n",   "toZone": "z_street_n",   "type": "open", "side": "north" },
+        { "fromZone": "z_crossroads", "toTile": "t_residential","toZone": "z_residential", "type": "door", "side": "west" },
+        { "fromZone": "z_crossroads", "toTile": "t_yard",       "toZone": "z_yard",        "type": "open", "side": "east" },
+        { "fromZone": "z_crossroads", "toTile": "t_street_s",   "toZone": "z_street_s",    "type": "open", "side": "south" }
+      ],
+      "tags": {},
+      "playerStart": [],
+      "spawnPoints": []
+    },
+    {
+      "id": "t_yard",       "name": "Pátio Industrial",     "image": "",
+      "gridX": 2, "gridY": 2,
+      "zones": [{ "id": "z_yard",       "name": "Pátio Industrial",     "type": "outdoor", "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_yard",       "toTile": "t_silos",      "toZone": "z_silos",      "type": "open", "side": "north" },
+        { "fromZone": "z_yard",       "toTile": "t_crossroads", "toZone": "z_crossroads", "type": "open", "side": "west" },
+        { "fromZone": "z_yard",       "toTile": "t_gas_n",      "toZone": "z_gas_n",      "type": "open", "side": "east" },
+        { "fromZone": "z_yard",       "toTile": "t_depot",      "toZone": "z_depot",      "type": "open", "side": "south" }
+      ],
+      "tags": {},
+      "playerStart": [],
+      "spawnPoints": []
+    },
+    {
+      "id": "t_gas_n",      "name": "Posto Norte",          "image": "",
+      "gridX": 3, "gridY": 2,
+      "zones": [{ "id": "z_gas_n",      "name": "Posto Norte",          "type": "outdoor", "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_gas_n",      "toTile": "t_storage",    "toZone": "z_storage",    "type": "open", "side": "north" },
+        { "fromZone": "z_gas_n",      "toTile": "t_yard",       "toZone": "z_yard",        "type": "open", "side": "west" },
+        { "fromZone": "z_gas_n",      "toTile": "t_gas_station","toZone": "z_gas_station", "type": "door", "side": "east" },
+        { "fromZone": "z_gas_n",      "toTile": "t_gas_s",      "toZone": "z_gas_s",       "type": "open", "side": "south" }
+      ],
+      "tags": {},
+      "playerStart": [],
+      "spawnPoints": []
+    },
+    {
+      "id": "t_gas_station","name": "Posto de Combustível", "image": "",
+      "gridX": 4, "gridY": 2,
+      "zones": [{ "id": "z_gas_station","name": "Posto de Combustível", "type": "indoor",  "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_gas_station","toTile": "t_factory",    "toZone": "z_factory",    "type": "door", "side": "north" },
+        { "fromZone": "z_gas_station","toTile": "t_gas_n",      "toZone": "z_gas_n",       "type": "door", "side": "west" },
+        { "fromZone": "z_gas_station","toTile": "t_spawn_e",    "toZone": "z_spawn_e",     "type": "door", "side": "east" },
+        { "fromZone": "z_gas_station","toTile": "t_garage",     "toZone": "z_garage",      "type": "door", "side": "south" }
+      ],
+      "tags": { "z_gas_station": ["fuel_canister", "item"] },
+      "playerStart": [],
+      "spawnPoints": []
+    },
+    {
+      "id": "t_spawn_e",    "name": "Entrada Leste",        "image": "",
+      "gridX": 5, "gridY": 2,
+      "zones": [{ "id": "z_spawn_e",    "name": "Entrada Leste",        "type": "street",  "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_spawn_e",    "toTile": "t_spawn_ne",   "toZone": "z_spawn_ne",   "type": "open", "side": "north" },
+        { "fromZone": "z_spawn_e",    "toTile": "t_gas_station","toZone": "z_gas_station", "type": "door", "side": "west" }
+      ],
+      "tags": {},
+      "playerStart": [],
+      "spawnPoints": ["z_spawn_e"]
+    },
+    {
+      "id": "t_alley",      "name": "Beco",                 "image": "",
+      "gridX": 0, "gridY": 3,
+      "zones": [{ "id": "z_alley",      "name": "Beco",                 "type": "street",  "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_alley",      "toTile": "t_residential","toZone": "z_residential", "type": "open", "side": "north" },
+        { "fromZone": "z_alley",      "toTile": "t_street_s",   "toZone": "z_street_s",    "type": "open", "side": "east" },
+        { "fromZone": "z_alley",      "toTile": "t_spawn_sw",   "toZone": "z_spawn_sw",    "type": "open", "side": "south" }
+      ],
+      "tags": {},
+      "playerStart": [],
+      "spawnPoints": []
+    },
+    {
+      "id": "t_street_s",   "name": "Rua Sul",              "image": "",
+      "gridX": 1, "gridY": 3,
+      "zones": [{ "id": "z_street_s",   "name": "Rua Sul",              "type": "street",  "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_street_s",   "toTile": "t_crossroads", "toZone": "z_crossroads",  "type": "open", "side": "north" },
+        { "fromZone": "z_street_s",   "toTile": "t_alley",      "toZone": "z_alley",        "type": "open", "side": "west" },
+        { "fromZone": "z_street_s",   "toTile": "t_depot",      "toZone": "z_depot",        "type": "open", "side": "east" },
+        { "fromZone": "z_street_s",   "toTile": "t_start",      "toZone": "z_start",        "type": "open", "side": "south" }
+      ],
+      "tags": {},
+      "playerStart": [],
+      "spawnPoints": []
+    },
+    {
+      "id": "t_depot",      "name": "Depósito",             "image": "",
+      "gridX": 2, "gridY": 3,
+      "zones": [{ "id": "z_depot",      "name": "Depósito",             "type": "outdoor", "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_depot",      "toTile": "t_yard",       "toZone": "z_yard",         "type": "open", "side": "north" },
+        { "fromZone": "z_depot",      "toTile": "t_street_s",   "toZone": "z_street_s",     "type": "open", "side": "west" },
+        { "fromZone": "z_depot",      "toTile": "t_gas_s",      "toZone": "z_gas_s",        "type": "open", "side": "east" },
+        { "fromZone": "z_depot",      "toTile": "t_street_e",   "toZone": "z_street_e",     "type": "open", "side": "south" }
+      ],
+      "tags": { "z_depot": ["fuel_canister", "item"] },
+      "playerStart": [],
+      "spawnPoints": []
+    },
+    {
+      "id": "t_gas_s",      "name": "Posto Sul",            "image": "",
+      "gridX": 3, "gridY": 3,
+      "zones": [{ "id": "z_gas_s",      "name": "Posto Sul",            "type": "outdoor", "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_gas_s",      "toTile": "t_gas_n",      "toZone": "z_gas_n",        "type": "open", "side": "north" },
+        { "fromZone": "z_gas_s",      "toTile": "t_depot",      "toZone": "z_depot",        "type": "open", "side": "west" },
+        { "fromZone": "z_gas_s",      "toTile": "t_garage",     "toZone": "z_garage",       "type": "open", "side": "east" },
+        { "fromZone": "z_gas_s",      "toTile": "t_lot",        "toZone": "z_lot",          "type": "open", "side": "south" }
+      ],
+      "tags": {},
+      "playerStart": [],
+      "spawnPoints": []
+    },
+    {
+      "id": "t_garage",     "name": "Garagem",              "image": "",
+      "gridX": 4, "gridY": 3,
+      "zones": [{ "id": "z_garage",     "name": "Garagem",              "type": "indoor",  "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_garage",     "toTile": "t_gas_station","toZone": "z_gas_station",  "type": "open", "side": "north" },
+        { "fromZone": "z_garage",     "toTile": "t_gas_s",      "toZone": "z_gas_s",        "type": "open", "side": "west" },
+        { "fromZone": "z_garage",     "toTile": "t_extraction", "toZone": "z_extraction",   "type": "open", "side": "south" }
+      ],
+      "tags": { "z_garage": ["fuel_canister", "item"] },
+      "playerStart": [],
+      "spawnPoints": []
+    },
+    {
+      "id": "t_spawn_sw",   "name": "Entrada Sudoeste",     "image": "",
+      "gridX": 0, "gridY": 4,
+      "zones": [{ "id": "z_spawn_sw",   "name": "Entrada Sudoeste",     "type": "street",  "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_spawn_sw",   "toTile": "t_alley",      "toZone": "z_alley",        "type": "open", "side": "north" },
+        { "fromZone": "z_spawn_sw",   "toTile": "t_start",      "toZone": "z_start",        "type": "open", "side": "east" }
+      ],
+      "tags": {},
+      "playerStart": [],
+      "spawnPoints": ["z_spawn_sw"]
+    },
+    {
+      "id": "t_start",      "name": "Ponto de Partida",     "image": "",
+      "gridX": 1, "gridY": 4,
+      "zones": [{ "id": "z_start",      "name": "Ponto de Partida",     "type": "street",  "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_start",      "toTile": "t_street_s",   "toZone": "z_street_s",     "type": "open", "side": "north" },
+        { "fromZone": "z_start",      "toTile": "t_spawn_sw",   "toZone": "z_spawn_sw",     "type": "open", "side": "west" },
+        { "fromZone": "z_start",      "toTile": "t_street_e",   "toZone": "z_street_e",     "type": "open", "side": "east" }
       ],
       "tags": {},
       "playerStart": [
         { "zone": "z_start", "offsetX": 0.25, "offsetY": 0.5 },
         { "zone": "z_start", "offsetX": 0.5,  "offsetY": 0.5 },
         { "zone": "z_start", "offsetX": 0.75, "offsetY": 0.5 },
-        { "zone": "z_start", "offsetX": 0.5,  "offsetY": 0.75 }
+        { "zone": "z_start", "offsetX": 0.5,  "offsetY": 0.25 }
       ],
       "spawnPoints": []
     },
     {
-      "id": "t_corridor",  "name": "Corredor",             "image": "tile_corridor",
-      "gridX": 1, "gridY": 1,
-      "zones": [{ "id": "z_corridor",  "type": "indoor",     "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "id": "t_street_e",   "name": "Rua Leste",            "image": "",
+      "gridX": 2, "gridY": 4,
+      "zones": [{ "id": "z_street_e",   "name": "Rua Leste",            "type": "street",  "rect": {"x":0,"y":0,"w":1,"h":1} }],
       "connections": [
-        { "fromZone": "z_corridor",  "toTile": "t_start",     "toZone": "z_start",     "type": "open", "side": "west" },
-        { "fromZone": "z_corridor",  "toTile": "t_server",    "toZone": "z_server",    "type": "door", "side": "north" },
-        { "fromZone": "z_corridor",  "toTile": "t_street_ns", "toZone": "z_street_ns", "type": "open", "side": "east" },
-        { "fromZone": "z_corridor",  "toTile": "t_plaza",     "toZone": "z_plaza",     "type": "open", "side": "south" }
+        { "fromZone": "z_street_e",   "toTile": "t_depot",      "toZone": "z_depot",        "type": "open", "side": "north" },
+        { "fromZone": "z_street_e",   "toTile": "t_start",      "toZone": "z_start",        "type": "open", "side": "west" },
+        { "fromZone": "z_street_e",   "toTile": "t_lot",        "toZone": "z_lot",          "type": "open", "side": "east" }
       ],
       "tags": {},
+      "playerStart": [],
       "spawnPoints": []
     },
     {
-      "id": "t_server",    "name": "Sala de Servidores",   "image": "tile_server_room",
-      "gridX": 1, "gridY": 0,
-      "zones": [{ "id": "z_server",    "type": "indoor",     "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "id": "t_lot",        "name": "Estacionamento",       "image": "",
+      "gridX": 3, "gridY": 4,
+      "zones": [{ "id": "z_lot",        "name": "Estacionamento",       "type": "outdoor", "rect": {"x":0,"y":0,"w":1,"h":1} }],
       "connections": [
-        { "fromZone": "z_server",    "toTile": "t_corridor",  "toZone": "z_corridor",  "type": "door", "side": "south" }
-      ],
-      "tags": { "z_server": ["datapad_supervisor", "item"] },
-      "spawnPoints": []
-    },
-    {
-      "id": "t_street_ns", "name": "Rua Norte",            "image": "tile_street_ns",
-      "gridX": 2, "gridY": 1,
-      "zones": [{ "id": "z_street_ns", "type": "street",    "rect": {"x":0,"y":0,"w":1,"h":1} }],
-      "connections": [
-        { "fromZone": "z_street_ns", "toTile": "t_corridor",  "toZone": "z_corridor",  "type": "open", "side": "west" },
-        { "fromZone": "z_street_ns", "toTile": "t_checkpoint","toZone": "z_checkpoint","type": "open", "side": "east" },
-        { "fromZone": "z_street_ns", "toTile": "t_crossroads","toZone": "z_crossroads","type": "open", "side": "south" }
+        { "fromZone": "z_lot",        "toTile": "t_gas_s",      "toZone": "z_gas_s",        "type": "open", "side": "north" },
+        { "fromZone": "z_lot",        "toTile": "t_street_e",   "toZone": "z_street_e",     "type": "open", "side": "west" },
+        { "fromZone": "z_lot",        "toTile": "t_extraction", "toZone": "z_extraction",   "type": "open", "side": "east" }
       ],
       "tags": {},
-      "spawnPoints": ["z_street_ns"]
-
-    },
-    {
-      "id": "t_checkpoint","name": "Checkpoint",           "image": "tile_lab",
-      "gridX": 3, "gridY": 1,
-      "zones": [{ "id": "z_checkpoint","type": "indoor",    "rect": {"x":0,"y":0,"w":1,"h":1} }],
-      "connections": [
-        { "fromZone": "z_checkpoint","toTile": "t_street_ns","toZone": "z_street_ns", "type": "open", "side": "west" },
-        { "fromZone": "z_checkpoint","toTile": "t_garage",   "toZone": "z_garage",    "type": "door", "side": "east" },
-        { "fromZone": "z_checkpoint","toTile": "t_depot_a",  "toZone": "z_depot_a",   "type": "door", "side": "south" }
-      ],
-      "tags": {},
+      "playerStart": [],
       "spawnPoints": []
     },
     {
-      "id": "t_street_w",  "name": "Rua Oeste",            "image": "tile_street_ew",
-      "gridX": 0, "gridY": 2,
-      "zones": [{ "id": "z_street_w",  "type": "street",    "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "id": "t_extraction", "name": "Zona de Extração",     "image": "",
+      "gridX": 4, "gridY": 4,
+      "zones": [{ "id": "z_extraction", "name": "Zona de Extração",     "type": "extraction","rect": {"x":0,"y":0,"w":1,"h":1} }],
       "connections": [
-        { "fromZone": "z_street_w",  "toTile": "t_start",    "toZone": "z_start",     "type": "open", "side": "north" },
-        { "fromZone": "z_street_w",  "toTile": "t_plaza",    "toZone": "z_plaza",     "type": "open", "side": "east" },
-        { "fromZone": "z_street_w",  "toTile": "t_shelter",  "toZone": "z_shelter",   "type": "open", "side": "south" }
-      ],
-      "tags": {},
-      "spawnPoints": ["z_street_w"]
-    },
-    {
-      "id": "t_plaza",     "name": "Praça Central",        "image": "tile_plaza",
-      "gridX": 1, "gridY": 2,
-      "zones": [{ "id": "z_plaza",     "type": "street",    "rect": {"x":0,"y":0,"w":1,"h":1} }],
-      "connections": [
-        { "fromZone": "z_plaza",     "toTile": "t_corridor",  "toZone": "z_corridor",  "type": "open", "side": "north" },
-        { "fromZone": "z_plaza",     "toTile": "t_street_w",  "toZone": "z_street_w",  "type": "open", "side": "west" },
-        { "fromZone": "z_plaza",     "toTile": "t_crossroads","toZone": "z_crossroads","type": "open", "side": "east" },
-        { "fromZone": "z_plaza",     "toTile": "t_shelter",   "toZone": "z_shelter",   "type": "open", "side": "south" }
-      ],
-      "tags": {},
-      "spawnPoints": []
-    },
-    {
-      "id": "t_crossroads","name": "Cruzamento",           "image": "tile_crossroads",
-      "gridX": 2, "gridY": 2,
-      "zones": [{ "id": "z_crossroads","type": "street",    "rect": {"x":0,"y":0,"w":1,"h":1} }],
-      "connections": [
-        { "fromZone": "z_crossroads","toTile": "t_street_ns","toZone": "z_street_ns", "type": "open", "side": "north" },
-        { "fromZone": "z_crossroads","toTile": "t_plaza",    "toZone": "z_plaza",     "type": "open", "side": "west" },
-        { "fromZone": "z_crossroads","toTile": "t_depot_a",  "toZone": "z_depot_a",   "type": "door", "side": "east" },
-        { "fromZone": "z_crossroads","toTile": "t_workshop", "toZone": "z_workshop",  "type": "open", "side": "south" }
-      ],
-      "tags": {},
-      "spawnPoints": []
-    },
-    {
-      "id": "t_depot_a",   "name": "Depósito Combustível", "image": "tile_fuel_depot",
-      "gridX": 3, "gridY": 2,
-      "zones": [{ "id": "z_depot_a",   "type": "indoor",    "rect": {"x":0,"y":0,"w":1,"h":1} }],
-      "connections": [
-        { "fromZone": "z_depot_a",   "toTile": "t_crossroads","toZone": "z_crossroads","type": "door", "side": "west" },
-        { "fromZone": "z_depot_a",   "toTile": "t_checkpoint","toZone": "z_checkpoint","type": "door", "side": "north" },
-        { "fromZone": "z_depot_a",   "toTile": "t_garage",   "toZone": "z_garage",    "type": "door", "side": "east" }
-      ],
-      "tags": { "z_depot_a": ["fuel_canister", "item"] },
-      "spawnPoints": []
-    },
-    {
-      "id": "t_garage",    "name": "Garagem",              "image": "tile_garage",
-      "gridX": 4, "gridY": 1,
-      "zones": [{ "id": "z_garage",    "type": "indoor",    "rect": {"x":0,"y":0,"w":1,"h":1} }],
-      "connections": [
-        { "fromZone": "z_garage",    "toTile": "t_checkpoint","toZone": "z_checkpoint","type": "door", "side": "west" },
-        { "fromZone": "z_garage",    "toTile": "t_depot_a",   "toZone": "z_depot_a",  "type": "door", "side": "south" },
-        { "fromZone": "z_garage",    "toTile": "t_street_ew", "toZone": "z_street_ew","type": "open", "side": "east" }
-      ],
-      "tags": { "z_garage": ["fuel_canister", "item"] },
-      "spawnPoints": []
-    },
-    {
-      "id": "t_street_ew", "name": "Rua Leste",            "image": "tile_street_ew",
-      "gridX": 5, "gridY": 1,
-      "zones": [{ "id": "z_street_ew", "type": "street",   "rect": {"x":0,"y":0,"w":1,"h":1} }],
-      "connections": [
-        { "fromZone": "z_street_ew", "toTile": "t_garage",   "toZone": "z_garage",   "type": "open", "side": "west" },
-        { "fromZone": "z_street_ew", "toTile": "t_extraction","toZone": "z_extraction","type":"open", "side": "east" }
-      ],
-      "tags": {},
-      "spawnPoints": ["z_street_ew"]
-    },
-    {
-      "id": "t_shelter",   "name": "Abrigo",               "image": "tile_lab",
-      "gridX": 0, "gridY": 3,
-      "zones": [{ "id": "z_shelter",   "type": "indoor",   "rect": {"x":0,"y":0,"w":1,"h":1} }],
-      "connections": [
-        { "fromZone": "z_shelter",   "toTile": "t_street_w", "toZone": "z_street_w", "type": "open", "side": "north" },
-        { "fromZone": "z_shelter",   "toTile": "t_plaza",    "toZone": "z_plaza",    "type": "open", "side": "east" },
-        { "fromZone": "z_shelter",   "toTile": "t_workshop", "toZone": "z_workshop", "type": "door", "side": "east" }
-      ],
-      "tags": { "z_shelter": ["medkit", "item"] },
-      "spawnPoints": []
-    },
-    {
-      "id": "t_workshop",  "name": "Oficina",              "image": "tile_garage",
-      "gridX": 2, "gridY": 3,
-      "zones": [{ "id": "z_workshop",  "type": "indoor",   "rect": {"x":0,"y":0,"w":1,"h":1} }],
-      "connections": [
-        { "fromZone": "z_workshop",  "toTile": "t_crossroads","toZone": "z_crossroads","type":"open", "side": "north" },
-        { "fromZone": "z_workshop",  "toTile": "t_shelter",  "toZone": "z_shelter",  "type": "door", "side": "west" }
-      ],
-      "tags": { "z_workshop": ["emp_grenade", "item"] },
-      "spawnPoints": []
-    },
-    {
-      "id": "t_extraction","name": "Zona de Extração",     "image": "tile_extraction",
-      "gridX": 6, "gridY": 1,
-      "zones": [{ "id": "z_extraction","type": "extraction","rect": {"x":0,"y":0,"w":1,"h":1} }],
-      "connections": [
-        { "fromZone": "z_extraction","toTile": "t_street_ew","toZone": "z_street_ew","type": "open", "side": "west" }
+        { "fromZone": "z_extraction", "toTile": "t_garage",     "toZone": "z_garage",       "type": "open", "side": "north" },
+        { "fromZone": "z_extraction", "toTile": "t_lot",        "toZone": "z_lot",          "type": "open", "side": "west" }
       ],
       "tags": { "z_extraction": ["extraction_zone"] },
+      "playerStart": [],
       "spawnPoints": []
     }
   ],
   "objectives": {
-    "primary": ["fuel_canister", "extraction_zone"],
+    "primary":   ["fuel_canister", "extraction_zone"],
     "secondary": ["datapad_supervisor"]
   },
-  "spawnZones": ["z_street_ns","z_street_w","z_street_ew"]
+  "spawnZones": ["z_spawn_ne", "z_spawn_e", "z_spawn_sw"]
 }

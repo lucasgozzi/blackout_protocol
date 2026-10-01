@@ -92,10 +92,54 @@ class TurnManager {
       zonesMovedThisTurn: maxZones,
     );
     final logMsg  = '${player.definitionId} → $zoneId';
-    final newState = _updatePlayer(state, idx, updated);
-    return newState.copyWith(
-      eventLog: [...newState.eventLog, logMsg].takeLast(20).toList(),
+    final moved   = _updatePlayer(state, idx, updated).copyWith(
+      eventLog: [...state.eventLog, logMsg].takeLast(20).toList(),
     );
+    return _checkReachObjectives(moved);
+  }
+
+  /// After each player move, auto-complete any "reach" type objectives whose
+  /// zone condition is now satisfied.
+  GameState _checkReachObjectives(GameState state) {
+    if (_mapData == null) return state;
+    var current = state;
+
+    for (var i = 0; i < current.objectives.length; i++) {
+      final o = current.objectives[i];
+      if (o.isCompleted || o.type != ObjectiveType.reach) continue;
+
+      final targetTag = o.params['targetTileTag'] as String?;
+      if (targetTag == null) continue;
+
+      final requireAll = (o.params['requireAllPlayers'] as bool?) ?? false;
+      final alive = current.players.where((p) => !p.isEliminated).toList();
+
+      final met = requireAll
+          ? alive.every((p) => _playerInTaggedZone(p.zoneId, targetTag))
+          : alive.any((p) => _playerInTaggedZone(p.zoneId, targetTag));
+
+      if (!met) continue;
+
+      final log  = '🎯 ${o.description} — concluído!';
+      final objs = List.of(current.objectives)..[i] = o.copyWith(isCompleted: true);
+      current = current.copyWith(
+        objectives: objs,
+        eventLog:   [...current.eventLog, log].takeLast(20).toList(),
+      );
+      current = _checkVictory(current);
+    }
+
+    return current;
+  }
+
+  bool _playerInTaggedZone(String zoneId, String tag) {
+    if (_mapData == null || zoneId.isEmpty) return false;
+    try {
+      final found = (_mapData as dynamic).findZone(zoneId);
+      return found != null && (found.zone.tags as List).contains(tag);
+    } catch (_) {
+      return false;
+    }
   }
 
   // ---- ATTACK ZONE (1 action) ----
@@ -132,13 +176,28 @@ class TurnManager {
     if (objectiveId != null && objectiveId.isNotEmpty) {
       final objIdx = state.objectives.indexWhere((o) => o.id == objectiveId);
       if (objIdx != -1 && !state.objectives[objIdx].isCompleted) {
+        final obj            = state.objectives[objIdx];
+        final requiredCount  = (obj.params['requiredCount'] as num?)?.toInt() ?? 1;
+        final currentCount   = (obj.params['currentCount']  as num?)?.toInt() ?? 0;
+        final newCount       = currentCount + 1;
+        final isNowDone      = newCount >= requiredCount;
+
+        // Track which zone contributed so _syncItems can deplete it individually.
+        final collectedZones = List<String>.from(
+            (obj.params['collectedZones'] as List?)?.cast<String>() ?? [])
+          ..add(player.zoneId);
+
+        final newParams = Map<String, dynamic>.from(obj.params)
+          ..['currentCount']   = newCount
+          ..['collectedZones'] = collectedZones;
+
         final updatedObj = List.of(state.objectives)
-          ..[objIdx] = state.objectives[objIdx].copyWith(isCompleted: true);
+          ..[objIdx] = obj.copyWith(isCompleted: isNowDone, params: newParams);
         final updatedPlayer = _addItemToInventory(
           player.copyWith(actionsRemaining: player.actionsRemaining - 1),
           objectiveId,
         );
-        final log = '${player.definitionId} encontrou: ${state.objectives[objIdx].description}';
+        final log = '${player.definitionId} coletou: ${obj.description} ($newCount/$requiredCount)';
         final newState = state.copyWith(
           objectives: updatedObj,
           players:    List.of(state.players)..[idx] = updatedPlayer,
@@ -631,7 +690,7 @@ class TurnManager {
   List<String> _adjacentZoneIds(String zoneId) {
     if (_mapData == null) return [];
     try {
-      return (_mapData.adjacentZones(zoneId) as Iterable)
+      return (_mapData.adjacentZones(zoneId, ignoreDoors: true) as Iterable)
           .map<String>((e) => e.zone.id as String)
           .toList();
     } catch (_) {

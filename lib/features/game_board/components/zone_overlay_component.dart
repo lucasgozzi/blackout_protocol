@@ -11,9 +11,13 @@ class ZoneOverlayComponent extends PositionComponent with TapCallbacks {
   final ZoneType zoneType;
   final VoidCallback onTap;
 
-  ZoneHighlight _highlight    = ZoneHighlight.none;
-  bool          _hasObjective = false;
-  bool          _isSpawnZone  = false;
+  ZoneHighlight _highlight     = ZoneHighlight.none;
+  bool          _hasObjective  = false;
+  bool          _isSpawnZone   = false;
+  bool          _isSearchable  = false;
+  bool          _hasKnownItem  = false;
+  Set<String>   _closedDoorSides = {};
+  Set<String>   _openDoorSides   = {};
 
   ZoneOverlayComponent({
     required this.zoneId,
@@ -29,9 +33,18 @@ class ZoneOverlayComponent extends PositionComponent with TapCallbacks {
   void setZoneInfo({
     required bool hasObjective,
     required bool isSpawnZone,
+    bool isSearchable = false,
+    bool hasKnownItem = false,
   }) {
     _hasObjective = hasObjective;
     _isSpawnZone  = isSpawnZone;
+    _isSearchable = isSearchable;
+    _hasKnownItem = hasKnownItem;
+  }
+
+  void setDoors(Set<String> closed, Set<String> open) {
+    _closedDoorSides = closed;
+    _openDoorSides   = open;
   }
 
   @override
@@ -81,6 +94,14 @@ class ZoneOverlayComponent extends PositionComponent with TapCallbacks {
         ..strokeWidth = 1);
     }
 
+    // ---- Door edge markers (always visible) ----
+    for (final side in _closedDoorSides) {
+      _drawDoorEdge(canvas, side, const Color(0xCC7744FF));
+    }
+    for (final side in _openDoorSides) {
+      _drawDoorEdge(canvas, side, const Color(0xCC44BB66));
+    }
+
     // Extraction zone marker
     if (zoneType == ZoneType.extraction) {
       canvas.drawRect(rect.deflate(4), Paint()
@@ -104,10 +125,16 @@ class ZoneOverlayComponent extends PositionComponent with TapCallbacks {
       tp.paint(canvas, Offset(size.x - tp.width - 4, 4));
     }
 
-    // ---- Objective marker (pulsing box, bottom-left) ----
-    if (_hasObjective) {
+    // ---- Loot/objective crate marker (bottom-left) ----
+    // Zonas com ícone específico: ItemComponent renderiza o ícone E o 📦 pós-coleta
+    if ((_hasObjective || _isSearchable) && !_hasKnownItem) {
+      final opacity = _hasObjective ? 1.0 : 0.65;
+      final sz      = size.x * (_hasObjective ? 0.18 : 0.15);
       final tp = TextPainter(
-        text: TextSpan(text: '📦', style: TextStyle(fontSize: size.x * 0.18)),
+        text: TextSpan(text: '📦', style: TextStyle(
+          fontSize: sz,
+          color: Color.fromRGBO(255, 255, 255, opacity),
+        )),
         textDirection: TextDirection.ltr,
       )..layout();
       tp.paint(canvas, Offset(4, size.y - tp.height - 4));
@@ -142,6 +169,23 @@ class ZoneOverlayComponent extends PositionComponent with TapCallbacks {
       tp.paint(canvas,
           Offset(size.x / 2 - tp.width / 2, size.y / 2 - tp.height / 2));
     }
+  }
+
+  void _drawDoorEdge(Canvas canvas, String side, Color color) {
+    const doorLen = 28.0, doorThick = 6.0;
+    final Rect r = switch (side) {
+      'north' => Rect.fromCenter(center: Offset(size.x / 2, 0),      width: doorLen, height: doorThick),
+      'south' => Rect.fromCenter(center: Offset(size.x / 2, size.y), width: doorLen, height: doorThick),
+      'east'  => Rect.fromCenter(center: Offset(size.x, size.y / 2), width: doorThick, height: doorLen),
+      'west'  => Rect.fromCenter(center: Offset(0,      size.y / 2), width: doorThick, height: doorLen),
+      _       => Rect.zero,
+    };
+    if (r == Rect.zero) return;
+    canvas.drawRect(r, Paint()..color = color);
+    canvas.drawRect(r, Paint()
+      ..color = color.withValues(alpha: 1.0)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1);
   }
 
   @override
