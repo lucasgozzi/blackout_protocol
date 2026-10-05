@@ -1,0 +1,74 @@
+{
+  "id": "tut_02_beta",
+  "campaignId": "tutorial",
+  "missionNumber": 2,
+  "title": "Protocolo Beta",
+  "description": "Dois operadores, inimigos chegam no fim do primeiro turno. Aprenda a buscar loot, atacar e sobreviver à fase inimiga.",
+  "mapAsset": "assets/data/maps/tut_02.json",
+  "maxAlertLevel": 4,
+  "maxRounds": 0,
+  "objectives": [
+    {
+      "id": "obj_eliminate",
+      "description": "Elimine todos os drones",
+      "type": "eliminate",
+      "isPrimary": true,
+      "isCompleted": false,
+      "params": {}
+    },
+    {
+      "id": "obj_extract",
+      "description": "Alcance a zona de extração",
+      "type": "reach",
+      "isPrimary": true,
+      "isCompleted": false,
+      "params": {
+        "targetTileTag": "extraction_zone",
+        "requireAllPlayers": false
+      }
+    }
+  ],
+  "spawnPoints": [
+    { "id": "sp_east", "x": 2, "y": 1, "direction": "W" }
+  ],
+  "spawnRules": [
+    { "alertLevel": 1, "enemyId": "drone_walker", "count": 2, "spawnPointId": "sp_east" }
+  ],
+  "alertEvents": [],
+  "availablePlayers": ["scout_aria", "soldier_kai"],
+  "startingItems": {
+    "pistol": 1
+  },
+  "requiredCompletedMissions": ["tut_01_alfa"],
+  "tutorialHints": [
+    {
+      "id": "tut02_start",
+      "trigger": "mission_start",
+      "title": "Protocolo Beta — plano",
+      "message": "Plano em 3 passos:\n\n① Turno 1: explore os depósitos e colete loot antes dos inimigos chegarem.\n② Quando os drones surgirem, use as armas para eliminá-los.\n③ Com a área limpa, mova qualquer operador até a EXTRAÇÃO.\n\nO turno 1 é livre — sem inimigos. Use-o para se posicionar.",
+      "icons": [
+        { "emoji": "🔫", "color": "#FFAA00", "label": "Loot nos depósitos — busque para coletar" },
+        { "emoji": "⚡", "color": "#FF4444", "label": "Drones surgem no fim do turno 1" },
+        { "emoji": "↑",  "color": "#00FF88", "label": "Zona de extração — alcance após eliminar os inimigos" }
+      ]
+    },
+    {
+      "id": "tut02_first_search",
+      "trigger": "first_search",
+      "title": "Item encontrado",
+      "message": "Você coletou um item. Armas ficam no inventário e podem ser usadas ao atacar um inimigo adjacente.\n\nMedkits curam 2 HP e são usados como ação gratuita no seu turno."
+    },
+    {
+      "id": "tut02_first_enemy_phase",
+      "trigger": "first_enemy_phase",
+      "title": "Fase inimiga",
+      "message": "Todos os operadores agiram — agora é a fase inimiga. Drones se movem em direção ao operador mais próximo e atacam se estiverem na mesma zona.\n\nDica: se um drone está bloqueando o caminho, use 1 ação para atacá-lo antes de mover."
+    },
+    {
+      "id": "tut02_first_spawn",
+      "trigger": "first_spawn",
+      "title": "Drones detectados",
+      "message": "O Nível de Alerta subiu e novos drones surgiram na borda do mapa.\n\nNesta missão, os inimigos aparecem apenas uma vez. Elimine todos e então extraia."
+    }
+  ]
+}

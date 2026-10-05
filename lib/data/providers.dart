@@ -7,6 +7,7 @@ import 'asset_loader.dart';
 import 'campaign_repository.dart';
 import 'enemy_catalog.dart';
 import 'player_catalog.dart';
+import 'progress_repository.dart';
 
 // ---- Infrastructure ----
 
@@ -67,3 +68,25 @@ final playerDefinitionProvider =
   final catalog = await ref.watch(playerCatalogProvider.future);
   return catalog.getById(playerId);
 });
+
+// ---- Progress / mission unlock ----
+
+final progressRepositoryProvider = Provider<ProgressRepository>(
+  (_) => ProgressRepository(),
+);
+
+final completedMissionsProvider =
+    AsyncNotifierProvider<CompletedMissionsNotifier, Set<String>>(
+  CompletedMissionsNotifier.new,
+);
+
+class CompletedMissionsNotifier extends AsyncNotifier<Set<String>> {
+  @override
+  Future<Set<String>> build() =>
+      ref.read(progressRepositoryProvider).loadCompletedMissions();
+
+  Future<void> markCompleted(String missionId) async {
+    await ref.read(progressRepositoryProvider).markMissionCompleted(missionId);
+    state = AsyncData({...state.value ?? {}, missionId});
+  }
+}

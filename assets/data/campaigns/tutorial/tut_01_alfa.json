@@ -1,0 +1,59 @@
+{
+  "id": "tut_01_alfa",
+  "campaignId": "tutorial",
+  "missionNumber": 1,
+  "title": "Protocolo Alfa",
+  "description": "Missão solo. Aprenda a mover seu operador, abrir portas e alcançar a zona de extração.",
+  "mapAsset": "assets/data/maps/tut_01.json",
+  "maxAlertLevel": 0,
+  "maxRounds": 0,
+  "objectives": [
+    {
+      "id": "obj_extract",
+      "description": "Alcance a zona de extração",
+      "type": "reach",
+      "isPrimary": true,
+      "isCompleted": false,
+      "params": {
+        "targetTileTag": "extraction_zone",
+        "requireAllPlayers": false
+      }
+    }
+  ],
+  "spawnPoints": [],
+  "spawnRules": [],
+  "alertEvents": [],
+  "availablePlayers": ["scout_aria"],
+  "startingItems": {},
+  "requiredCompletedMissions": [],
+  "tutorialHints": [
+    {
+      "id": "tut01_start",
+      "trigger": "mission_start",
+      "title": "Protocolo Alfa — como vencer",
+      "message": "Plano em 2 passos:\n\n① Mova Aria até a porta bloqueada e abra-a (custa 1 ação).\n② Continue pelo corredor até alcançar a EXTRAÇÃO.\n\nVocê tem 3 ações por turno. Mover para uma zona adjacente custa 1 ação.",
+      "icons": [
+        { "emoji": "🚪", "color": "#7755EE", "label": "Porta bloqueada — use 1 ação para abrir" },
+        { "emoji": "↑",  "color": "#00FF88", "label": "Zona de extração — chegue aqui para vencer" }
+      ]
+    },
+    {
+      "id": "tut01_first_move",
+      "trigger": "first_move",
+      "title": "Movimento",
+      "message": "Cada zona adjacente custa 1 ação de movimento. Você tem 3 ações por turno — use-as para mover, buscar e interagir em qualquer ordem.\n\nDica: você ainda tem ações restantes neste turno. Continue movendo."
+    },
+    {
+      "id": "tut01_first_door",
+      "trigger": "first_open_door",
+      "title": "Porta bloqueada",
+      "message": "Esta passagem tem uma porta. Toque nela e use 1 ação para abrir.\n\nApós aberta, fica desbloqueada para o resto da missão — operadores passam sem custo extra."
+    },
+    {
+      "id": "tut01_first_search",
+      "trigger": "first_search",
+      "title": "Item encontrado",
+      "message": "BUSCAR em uma zona com item marcado o coleta automaticamente.\n\nEm zonas normais, buscar sorteia um item aleatório do loot. Itens ficam no inventário e podem ser usados a qualquer momento."
+    }
+  ]
+}

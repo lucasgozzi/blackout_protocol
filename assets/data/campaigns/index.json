@@ -1,6 +1,15 @@
 {
   "campaigns": [
     {
+      "id": "tutorial",
+      "manifestPath": "assets/data/campaigns/tutorial/manifest.json",
+      "missionPaths": [
+        "assets/data/campaigns/tutorial/tut_01_alfa.json",
+        "assets/data/campaigns/tutorial/tut_02_beta.json",
+        "assets/data/campaigns/tutorial/tut_03_gama.json"
+      ]
+    },
+    {
       "id": "campaign_01",
       "manifestPath": "assets/data/campaigns/campaign_01/manifest.json",
       "missionPaths": [

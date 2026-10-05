@@ -1,0 +1,123 @@
+{
+  "id": "tut_03",
+  "tilePixelSize": 209,
+  "gridCols": 3,
+  "gridRows": 3,
+  "background": "map_01",
+  "tiles": [
+    {
+      "id": "t_entrada_a",
+      "name": "Entrada A",
+      "image": "",
+      "gridX": 0,
+      "gridY": 0,
+      "zones": [{ "id": "z_entrada_a", "name": "Entrada A", "type": "street", "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_entrada_a", "toTile": "t_corredor_a", "toZone": "z_corredor_a", "type": "open", "side": "south" }
+      ],
+      "tags": {},
+      "playerStart": [
+        { "zone": "z_entrada_a", "offsetX": 0.3, "offsetY": 0.5 },
+        { "zone": "z_entrada_a", "offsetX": 0.7, "offsetY": 0.5 }
+      ],
+      "spawnPoints": []
+    },
+    {
+      "id": "t_entrada_b",
+      "name": "Entrada B",
+      "image": "",
+      "gridX": 2,
+      "gridY": 0,
+      "zones": [{ "id": "z_entrada_b", "name": "Entrada B", "type": "street", "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_entrada_b", "toTile": "t_corredor_b", "toZone": "z_corredor_b", "type": "open", "side": "south" }
+      ],
+      "tags": {},
+      "playerStart": [
+        { "zone": "z_entrada_b", "offsetX": 0.3, "offsetY": 0.5 },
+        { "zone": "z_entrada_b", "offsetX": 0.7, "offsetY": 0.5 }
+      ],
+      "spawnPoints": []
+    },
+    {
+      "id": "t_corredor_a",
+      "name": "Corredor A",
+      "image": "",
+      "gridX": 0,
+      "gridY": 1,
+      "zones": [{ "id": "z_corredor_a", "name": "Corredor A", "type": "indoor", "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_corredor_a", "toTile": "t_entrada_a", "toZone": "z_entrada_a", "type": "open", "side": "north" },
+        { "fromZone": "z_corredor_a", "toTile": "t_hub",       "toZone": "z_hub",       "type": "open", "side": "east"  },
+        { "fromZone": "z_corredor_a", "toTile": "t_lab_a",     "toZone": "z_lab_a",     "type": "open", "side": "south" }
+      ],
+      "tags": {},
+      "playerStart": [],
+      "spawnPoints": ["z_corredor_a"]
+    },
+    {
+      "id": "t_hub",
+      "name": "HUB Central",
+      "image": "",
+      "gridX": 1,
+      "gridY": 1,
+      "zones": [{ "id": "z_hub", "name": "HUB Central", "type": "indoor", "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_hub", "toTile": "t_corredor_a", "toZone": "z_corredor_a", "type": "open", "side": "west"  },
+        { "fromZone": "z_hub", "toTile": "t_corredor_b", "toZone": "z_corredor_b", "type": "open", "side": "east"  },
+        { "fromZone": "z_hub", "toTile": "t_extracao",   "toZone": "z_extracao",   "type": "open", "side": "south" }
+      ],
+      "tags": {},
+      "playerStart": [],
+      "spawnPoints": []
+    },
+    {
+      "id": "t_corredor_b",
+      "name": "Corredor B",
+      "image": "",
+      "gridX": 2,
+      "gridY": 1,
+      "zones": [{ "id": "z_corredor_b", "name": "Corredor B", "type": "indoor", "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_corredor_b", "toTile": "t_entrada_b", "toZone": "z_entrada_b", "type": "open", "side": "north" },
+        { "fromZone": "z_corredor_b", "toTile": "t_hub",       "toZone": "z_hub",       "type": "open", "side": "west"  }
+      ],
+      "tags": {},
+      "playerStart": [],
+      "spawnPoints": ["z_corredor_b"]
+    },
+    {
+      "id": "t_lab_a",
+      "name": "Laboratório",
+      "image": "",
+      "gridX": 0,
+      "gridY": 2,
+      "zones": [{ "id": "z_lab_a", "name": "Laboratório", "type": "indoor", "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_lab_a", "toTile": "t_corredor_a", "toZone": "z_corredor_a", "type": "open", "side": "north" }
+      ],
+      "tags": { "z_lab_a": ["medkit", "item"] },
+      "playerStart": [],
+      "spawnPoints": []
+    },
+    {
+      "id": "t_extracao",
+      "name": "Zona de Extração",
+      "image": "",
+      "gridX": 1,
+      "gridY": 2,
+      "zones": [{ "id": "z_extracao", "name": "Zona de Extração", "type": "extraction", "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_extracao", "toTile": "t_hub", "toZone": "z_hub", "type": "open", "side": "north" }
+      ],
+      "tags": { "z_extracao": ["extraction_zone"] },
+      "playerStart": [],
+      "spawnPoints": []
+    }
+  ],
+  "objectives": {
+    "primary": ["extraction_zone"],
+    "secondary": []
+  },
+  "spawnZones": ["z_corredor_a", "z_corredor_b"]
+}

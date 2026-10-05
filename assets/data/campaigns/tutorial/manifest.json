@@ -1,0 +1,16 @@
+{
+  "id": "tutorial",
+  "title": "Protocolo de Treino",
+  "description": "Aprenda as mecânicas do jogo em três missões progressivas antes de encarar a campanha principal.",
+  "coverArt": "campaign_tutorial_cover",
+  "access": "free",
+  "isTutorial": true,
+  "missionCount": 3,
+  "missionIds": [
+    "tut_01_alfa",
+    "tut_02_beta",
+    "tut_03_gama"
+  ],
+  "storeProductId": "",
+  "version": 1
+}

@@ -82,7 +82,7 @@ class _TopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 52, 12, 8),
+      padding: const EdgeInsets.fromLTRB(12, 52, 68, 8),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter, end: Alignment.bottomCenter,
@@ -98,7 +98,7 @@ class _TopBar extends StatelessWidget {
             game.phase == GamePhase.playerTurn ? const Color(0xFF00FF88) : const Color(0xFFFFAA00),
           ),
           const Spacer(),
-          _alertWidget(game.alertLevel, mission.maxAlertLevel),
+          _alertWidget(game),
         ],
       ),
     );
@@ -113,13 +113,26 @@ class _TopBar extends StatelessWidget {
     child: Text(label, style: TextStyle(color: color, fontSize: 13, fontFamily: 'monospace', letterSpacing: 0.5)),
   );
 
-  Widget _alertWidget(int level, int max) {
-    final f = level / max;
-    final color = f >= 0.8 ? const Color(0xFFFF4444) : f >= 0.5 ? const Color(0xFFFFAA00) : const Color(0xFF00AAFF);
+  Widget _alertWidget(GameState game) {
+    final alive = game.players.where((p) => !p.isEliminated).toList();
+    final maxDanger = alive.isEmpty
+        ? DangerLevel.blue
+        : alive.map((p) => p.dangerLevel).reduce(
+            (a, b) => b.index > a.index ? b : a);
+
+    final (label, color) = switch (maxDanger) {
+      DangerLevel.blue   => ('AZUL',     const Color(0xFF00AAFF)),
+      DangerLevel.yellow => ('AMARELO',  const Color(0xFFFFDD00)),
+      DangerLevel.orange => ('LARANJA',  const Color(0xFFFF8800)),
+      DangerLevel.red    => ('VERMELHO', const Color(0xFFFF2222)),
+    };
+
     return Row(children: [
-      Icon(Icons.trending_up, color: color, size: 14),
+      Icon(Icons.warning_amber_rounded, color: color, size: 14),
       const SizedBox(width: 4),
-      Text('Spawn $level', style: TextStyle(color: color, fontFamily: 'monospace', fontWeight: FontWeight.bold, fontSize: 13)),
+      Text('Alerta $label',
+          style: TextStyle(color: color, fontFamily: 'monospace',
+              fontWeight: FontWeight.bold, fontSize: 13)),
     ]);
   }
 }

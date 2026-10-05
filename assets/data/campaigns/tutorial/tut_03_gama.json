@@ -1,0 +1,76 @@
+{
+  "id": "tut_03_gama",
+  "campaignId": "tutorial",
+  "missionNumber": 3,
+  "title": "Protocolo Gama",
+  "description": "Quatro operadores, dois grupos, alerta crescente. TODOS devem alcançar a extração — ninguém fica para trás.",
+  "mapAsset": "assets/data/maps/tut_03.json",
+  "maxAlertLevel": 8,
+  "maxRounds": 0,
+  "objectives": [
+    {
+      "id": "obj_extract_all",
+      "description": "Evacue TODOS os operadores pela zona de extração",
+      "type": "reach",
+      "isPrimary": true,
+      "isCompleted": false,
+      "params": {
+        "targetTileTag": "extraction_zone",
+        "requireAllPlayers": true
+      }
+    }
+  ],
+  "spawnPoints": [
+    { "id": "sp_north", "x": 0, "y": 1, "direction": "S" },
+    { "id": "sp_south", "x": 2, "y": 1, "direction": "W" }
+  ],
+  "spawnRules": [
+    { "alertLevel": 1, "enemyId": "drone_walker", "count": 2, "spawnPointId": "sp_north" },
+    { "alertLevel": 3, "enemyId": "drone_runner", "count": 1, "spawnPointId": "sp_south" },
+    { "alertLevel": 5, "enemyId": "drone_fatty",  "count": 1, "spawnPointId": "sp_north" }
+  ],
+  "alertEvents": [
+    {
+      "triggerAlertLevel": 7,
+      "description": "SENTINEL ativado. Nível de ameaça crítico.",
+      "eventType": "spawn_boss",
+      "params": {
+        "enemyId": "drone_abomination",
+        "count": 1,
+        "spawnPointId": "sp_south"
+      }
+    }
+  ],
+  "availablePlayers": ["scout_aria", "medic_nova", "engineer_rex", "soldier_kai"],
+  "startingItems": {
+    "pistol": 2,
+    "medkit": 1,
+    "emp_grenade": 1
+  },
+  "requiredCompletedMissions": ["tut_02_beta"],
+  "tutorialHints": [
+    {
+      "id": "tut03_start",
+      "trigger": "mission_start",
+      "title": "Protocolo Gama — extração total",
+      "message": "TODOS os 4 operadores devem alcançar a extração para vencer.\n\n① Grupo A (Aria + Nova) avança pelo lado esquerdo.\n② Grupo B (Rex + Kai) avança pelo lado direito.\n③ Os dois grupos se encontram no HUB central e convergem para a EXTRAÇÃO.\n\nO alerta sobe 1 a cada turno — novos inimigos chegam quanto mais você demorar.",
+      "icons": [
+        { "emoji": "👥", "color": "#00C8FF", "label": "Grupo A: Aria + Nova — lado esquerdo" },
+        { "emoji": "👥", "color": "#FFB800", "label": "Grupo B: Rex + Kai — lado direito" },
+        { "emoji": "↑",  "color": "#00FF88", "label": "Extração — TODOS devem chegar aqui" }
+      ]
+    },
+    {
+      "id": "tut03_first_spawn",
+      "trigger": "first_spawn",
+      "title": "Alerta — reforços chegando",
+      "message": "O nível de alerta subiu para 1 e novos drones surgiram. Ele continua subindo a cada turno.\n\nQuanto mais alto o alerta, mais inimigos e mais difíceis aparecem. Seja rápido."
+    },
+    {
+      "id": "tut03_runner_warning",
+      "trigger": "first_enemy_phase",
+      "title": "Fase inimiga",
+      "message": "Inimigos se movem e atacam. Fique de olho em drones próximos aos seus operadores mais frágeis.\n\nDica: Nova pode curar 2 HP de um aliado adjacente como ação. Use-a estrategicamente."
+    }
+  ]
+}

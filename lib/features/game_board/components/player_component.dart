@@ -13,7 +13,7 @@ class PlayerComponent extends PositionComponent with TapCallbacks {
 
   ui.Image? _tokenImage;
 
-  static const _tokenSize = 40.0;
+  static const _tokenSize = 72.0;
 
   PlayerComponent({
     required this.player,

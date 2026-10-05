@@ -1,0 +1,105 @@
+{
+  "id": "tut_02",
+  "tilePixelSize": 209,
+  "gridCols": 3,
+  "gridRows": 2,
+  "background": "map_01",
+  "tiles": [
+    {
+      "id": "t_entrada",
+      "name": "Entrada",
+      "image": "",
+      "gridX": 0,
+      "gridY": 0,
+      "zones": [{ "id": "z_entrada", "name": "Entrada", "type": "street", "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_entrada", "toTile": "t_corredor_a", "toZone": "z_corredor_a", "type": "open", "side": "east" }
+      ],
+      "tags": {},
+      "playerStart": [
+        { "zone": "z_entrada", "offsetX": 0.3, "offsetY": 0.5 },
+        { "zone": "z_entrada", "offsetX": 0.7, "offsetY": 0.5 }
+      ],
+      "spawnPoints": []
+    },
+    {
+      "id": "t_corredor_a",
+      "name": "Corredor A",
+      "image": "",
+      "gridX": 1,
+      "gridY": 0,
+      "zones": [{ "id": "z_corredor_a", "name": "Corredor A", "type": "indoor", "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_corredor_a", "toTile": "t_entrada",    "toZone": "z_entrada",    "type": "open", "side": "west" },
+        { "fromZone": "z_corredor_a", "toTile": "t_deposito_a", "toZone": "z_deposito_a", "type": "open", "side": "east" }
+      ],
+      "tags": {},
+      "playerStart": [],
+      "spawnPoints": []
+    },
+    {
+      "id": "t_deposito_a",
+      "name": "Depósito A",
+      "image": "",
+      "gridX": 2,
+      "gridY": 0,
+      "zones": [{ "id": "z_deposito_a", "name": "Depósito A", "type": "indoor", "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_deposito_a", "toTile": "t_corredor_a", "toZone": "z_corredor_a", "type": "open", "side": "west" },
+        { "fromZone": "z_deposito_a", "toTile": "t_deposito_b", "toZone": "z_deposito_b", "type": "open", "side": "south" }
+      ],
+      "tags": { "z_deposito_a": ["medkit", "item"] },
+      "playerStart": [],
+      "spawnPoints": []
+    },
+    {
+      "id": "t_extracao",
+      "name": "Zona de Extração",
+      "image": "",
+      "gridX": 0,
+      "gridY": 1,
+      "zones": [{ "id": "z_extracao", "name": "Zona de Extração", "type": "extraction", "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_extracao", "toTile": "t_corredor_b", "toZone": "z_corredor_b", "type": "open", "side": "east" }
+      ],
+      "tags": { "z_extracao": ["extraction_zone"] },
+      "playerStart": [],
+      "spawnPoints": []
+    },
+    {
+      "id": "t_corredor_b",
+      "name": "Corredor B",
+      "image": "",
+      "gridX": 1,
+      "gridY": 1,
+      "zones": [{ "id": "z_corredor_b", "name": "Corredor B", "type": "indoor", "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_corredor_b", "toTile": "t_extracao",   "toZone": "z_extracao",   "type": "open", "side": "west" },
+        { "fromZone": "z_corredor_b", "toTile": "t_deposito_b", "toZone": "z_deposito_b", "type": "open", "side": "east" }
+      ],
+      "tags": {},
+      "playerStart": [],
+      "spawnPoints": []
+    },
+    {
+      "id": "t_deposito_b",
+      "name": "Depósito B",
+      "image": "",
+      "gridX": 2,
+      "gridY": 1,
+      "zones": [{ "id": "z_deposito_b", "name": "Depósito B", "type": "indoor", "rect": {"x":0,"y":0,"w":1,"h":1} }],
+      "connections": [
+        { "fromZone": "z_deposito_b", "toTile": "t_deposito_a", "toZone": "z_deposito_a", "type": "open", "side": "north" },
+        { "fromZone": "z_deposito_b", "toTile": "t_corredor_b", "toZone": "z_corredor_b", "type": "open", "side": "west" }
+      ],
+      "tags": { "z_deposito_b": ["pistol", "item"] },
+      "playerStart": [],
+      "spawnPoints": ["z_deposito_b"]
+    }
+  ],
+  "objectives": {
+    "primary": ["extraction_zone"],
+    "secondary": []
+  },
+  "spawnZones": ["z_deposito_b"]
+}

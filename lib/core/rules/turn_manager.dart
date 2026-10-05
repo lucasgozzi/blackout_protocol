@@ -114,6 +114,14 @@ class TurnManager {
       final requireAll = (o.params['requireAllPlayers'] as bool?) ?? false;
       final alive = current.players.where((p) => !p.isEliminated).toList();
 
+      // ignore: avoid_print
+      print('[REACH] obj=${o.id} requireAll=$requireAll alive=${alive.length}');
+      for (final p in alive) {
+        final atTarget = _playerInTaggedZone(p.zoneId, targetTag);
+        // ignore: avoid_print
+        print('[REACH]   ${p.definitionId} zone=${p.zoneId} atTarget=$atTarget');
+      }
+
       final met = requireAll
           ? alive.every((p) => _playerInTaggedZone(p.zoneId, targetTag))
           : alive.any((p) => _playerInTaggedZone(p.zoneId, targetTag));
@@ -159,7 +167,29 @@ class TurnManager {
       );
     }
 
-    return result;
+    final checkedState = _checkEliminateObjectives(result.state);
+    return ZoneCombatResult(state: checkedState, log: result.log);
+  }
+
+  /// Marks any `eliminate` objective as completed when all enemies are gone.
+  GameState _checkEliminateObjectives(GameState state) {
+    final hasEliminate = state.objectives.any(
+      (o) => !o.isCompleted && o.type == ObjectiveType.eliminate,
+    );
+    if (!hasEliminate || state.enemies.isNotEmpty) return state;
+
+    var current = state;
+    for (var i = 0; i < current.objectives.length; i++) {
+      final o = current.objectives[i];
+      if (o.isCompleted || o.type != ObjectiveType.eliminate) continue;
+      final objs = List.of(current.objectives)..[i] = o.copyWith(isCompleted: true);
+      final log  = '🎯 ${o.description} — concluído!';
+      current = current.copyWith(
+        objectives: objs,
+        eventLog:   [...current.eventLog, log].takeLast(20).toList(),
+      );
+    }
+    return _checkVictory(current);
   }
 
   // ---- SEARCH (1 action) ----

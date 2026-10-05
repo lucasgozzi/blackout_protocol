@@ -229,11 +229,10 @@ class GameBoardGame extends FlameGame with TapCallbacks, ScaleDetector {
     _syncDoors();
     _buildItems();
     _syncZoneInfo();
+    _loaded = true;
     _syncPieces();
     _centerCamera();
-    _autoSelectActivePlayer();
-
-    _loaded = true;
+    _autoSelectActivePlayer(snapCamera: true);
   }
 
   // When true, syncState skips repositioning enemy components so the
@@ -529,8 +528,8 @@ class GameBoardGame extends FlameGame with TapCallbacks, ScaleDetector {
     if (mixed.isEmpty) return;
 
     // Player radius ≈ 20, enemy radius ≈ 36 → need > 56px center distance
-    const playerYShift = -32.0;
-    const enemyYShift  =  28.0;
+    const playerYShift = -58.0;
+    const enemyYShift  =  50.0;
 
     for (final zoneId in mixed) {
       for (final p in gameState.players) {
@@ -572,7 +571,7 @@ class GameBoardGame extends FlameGame with TapCallbacks, ScaleDetector {
     for (final p in gameState.players) {
       if (!p.isEliminated) (zoneGroups[p.zoneId] ??= []).add(p.playerId);
     }
-    const spacing = 34.0;
+    const spacing = 61.0;
     for (final entry in zoneGroups.entries) {
       final group = entry.value;
       for (var i = 0; i < group.length; i++) {
@@ -658,7 +657,7 @@ class GameBoardGame extends FlameGame with TapCallbacks, ScaleDetector {
 
   // ---- Auto-selection ----
 
-  void _autoSelectActivePlayer() {
+  void _autoSelectActivePlayer({bool snapCamera = false}) {
     if (gameState.phase != GamePhase.playerTurn) return;
     final playerId = gameState.activePlayerId;
     try {
@@ -673,6 +672,16 @@ class GameBoardGame extends FlameGame with TapCallbacks, ScaleDetector {
       _doorZoneIds       = _computeDoorZones(_selectedZoneId);
       _updateOverlays();
       onActionModeChanged(ActionMode.none);
+      // Focus camera on active character. Snap instantly on first load,
+      // animate smoothly on subsequent turn changes.
+      final comp = _players[player.playerId];
+      if (comp != null) {
+        if (snapCamera) {
+          _cam.viewfinder.position = comp.position.clone();
+        } else {
+          animateCameraTo(comp.position.x, comp.position.y);
+        }
+      }
     } catch (_) {
       // Player not found or already eliminated — leave selection empty.
     }
@@ -944,7 +953,11 @@ class GameBoardGame extends FlameGame with TapCallbacks, ScaleDetector {
     _cam.viewfinder.position -= delta / _zoom;
     _panStart = info.eventPosition.global;
     if (info.scale.global.x != 1.0) {
-      _applyZoom(_zoom * info.scale.global.x);
+      // Dampen pinch sensitivity: lerp the scale factor toward 1.0 so the
+      // zoom doesn't compound too aggressively frame-by-frame.
+      const sensitivity = 0.2;
+      final dampened = 1.0 + (info.scale.global.x - 1.0) * sensitivity;
+      _applyZoom(_zoom * dampened);
     }
   }
 
