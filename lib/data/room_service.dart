@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:firebase_database/firebase_database.dart';
 
+import '../core/models/game_state.dart';
 import 'identity_service.dart';
 
 /// Possible room statuses stored in RTDB.
@@ -156,8 +157,43 @@ class RoomService {
 
   // ── Start game (host only) ───────────────────────────────────────────────
 
+  /// Atomically writes the initial game state and marks the room as playing.
+  /// [assignments] maps each userId → their GameState player UUID.
+  Future<void> writeGameStart({
+    required String roomId,
+    required GameState gameState,
+    required Map<String, String> assignments,
+    required String missionId,
+  }) async {
+    final updates = <String, dynamic>{
+      'meta/status':    'playing',
+      'meta/missionId': missionId,
+      'game_state':     gameState.toJson(),
+    };
+    for (final e in assignments.entries) {
+      updates['assignments/${e.key}'] = e.value;
+    }
+    await _roomRef(roomId).update(updates);
+  }
+
+  /// Convenience alias kept for backward compat; prefer writeGameStart.
   Future<void> startGame(String roomId) async {
     await _roomRef(roomId).child('meta/status').set('playing');
+  }
+
+  /// Returns the GameState player UUID for [userId] in this room.
+  Future<String> getMyPlayerAssignment(String roomId, String userId) async {
+    final snap = await _roomRef(roomId).child('assignments/$userId').get();
+    if (!snap.exists) throw Exception('No player assignment found.');
+    return snap.value as String;
+  }
+
+  /// Reads the current GameState from RTDB (one-shot).
+  Future<GameState> getInitialGameState(String roomId) async {
+    final snap = await _roomRef(roomId).child('game_state').get();
+    if (!snap.exists) throw Exception('No game state found.');
+    final raw = Map<String, dynamic>.from(snap.value as Map<Object?, Object?>);
+    return GameState.fromJson(raw);
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────────

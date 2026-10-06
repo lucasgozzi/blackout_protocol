@@ -3,6 +3,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/engine/game_session_notifier.dart';
+import '../../core/models/campaign.dart';
+import '../../core/models/mission.dart';
+import '../../data/asset_loader.dart';
+import '../../data/game_sync_service.dart';
+import '../../data/map_loader.dart';
+import '../../data/multiplayer_info.dart';
 import '../../data/providers.dart';
 import '../../data/room_service.dart';
 
@@ -17,6 +24,20 @@ final _roomStatusProvider =
     StreamProvider.family<String, String>(
   (ref, roomId) => ref.read(roomServiceProvider).statusStream(roomId),
 );
+
+// Flat list of (campaign, mission) pairs for the host's mission picker.
+final _allMissionsProvider =
+    FutureProvider<List<(CampaignDefinition, MissionDefinition)>>((ref) async {
+  final campaigns = await ref.watch(allCampaignsProvider.future);
+  final result = <(CampaignDefinition, MissionDefinition)>[];
+  for (final c in campaigns) {
+    final missions = await ref.read(missionsForCampaignProvider(c.id).future);
+    for (final m in missions) {
+      result.add((c, m));
+    }
+  }
+  return result;
+});
 
 // ── Operator catalog (static, used for draft UI) ─────────────────────────────
 
@@ -56,7 +77,11 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen>
 
   // After creating/joining a room, this is set.
   String? _roomId;
-  bool _isHost = false;
+  bool    _isHost = false;
+
+  // Host picks a mission before starting.
+  String? _selectedMissionId;
+  String? _selectedMissionTitle;
 
   @override
   void initState() {
@@ -126,21 +151,121 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen>
 
   Future<void> _startGame(Map<String, RoomPlayer> players) async {
     if (_roomId == null) return;
-    // Ensure all players picked an operator.
-    final unready = players.values.where((p) => p.operatorId == null);
-    if (unready.isNotEmpty) {
-      setState(() => _error = 'Todos precisam escolher um operador.');
+    if (_selectedMissionId == null) {
+      setState(() => _error = 'Escolha uma missão antes de iniciar.');
       return;
     }
-    await ref.read(roomServiceProvider).startGame(_roomId!);
-    // Navigation is handled by _roomStatusProvider listener below.
+    setState(() { _loading = true; _error = null; });
+    try {
+      // 1. Load mission definition.
+      final mission = await ref.read(missionByIdProvider(_selectedMissionId!).future);
+
+      // 2. Resolve player start zones from map data.
+      final mapId = mission.mapAsset
+          .split('/').last.replaceAll('.tmj', '').replaceAll('.json', '');
+      List<String> startZoneIds = [];
+      List<String> spawnZones   = [];
+      try {
+        final mapData = await MapLoader(FlutterAssetLoader()).load(mapId);
+        startZoneIds = mapData.playerStartPositions.map((s) => s.zoneId).toList();
+        spawnZones   = mapData.globalSpawnZoneIds.toList();
+      } catch (_) {}
+
+      // 3. Build ordered player list (host first, then others in join order).
+      final orderedPlayers = players.values.toList();
+      final playerCatalog  = await ref.read(playerCatalogProvider.future);
+      final playerDefs     = orderedPlayers
+          .map((p) => playerCatalog.getById(p.operatorId!))
+          .toList();
+
+      // 4. Init and start mission on the notifier.
+      final enemyCatalog = await ref.read(enemyCatalogProvider.future);
+      final notifier = ref.read(gameSessionProvider.notifier);
+      notifier.init(enemyCatalog);
+      notifier.startMission(mission, playerDefs,
+          startZoneIds: startZoneIds, spawnZones: spawnZones);
+
+      // 5. Map userId → GameState player UUID.
+      final gameState = ref.read(gameSessionProvider)!.game;
+      final assignments = <String, String>{};
+      for (var i = 0; i < orderedPlayers.length; i++) {
+        assignments[orderedPlayers[i].userId] = gameState.players[i].playerId;
+      }
+
+      // 6. Atomically write initial state + assignments + status to RTDB.
+      await ref.read(roomServiceProvider).writeGameStart(
+        roomId:      _roomId!,
+        gameState:   gameState,
+        assignments: assignments,
+        missionId:   mission.id,
+      );
+
+      // 7. Wire GameSyncService to the notifier.
+      final identity = ref.read(identityServiceProvider);
+      final myUserId = identity.currentUserId ?? '';
+      final myPlayerId = assignments[myUserId]!;
+      final syncService = GameSyncService(
+        roomId: _roomId!, isHost: true, myUserId: myUserId);
+      notifier.configureMp(syncService, isHost: true, myPlayerId: myPlayerId);
+
+      // 8. Store multiplayer context for the game board.
+      ref.read(multiplayerInfoProvider.notifier).state = MultiplayerInfo(
+        roomId: _roomId!, isHost: true, myPlayerId: myPlayerId);
+
+      if (mounted) context.go('/game');
+    } catch (e) {
+      setState(() { _error = e.toString(); _loading = false; });
+    }
+  }
+
+  /// Client bootstrap: called when status changes to 'playing' on a non-host.
+  Future<void> _clientBootstrap() async {
+    if (_roomId == null) return;
+    setState(() { _loading = true; _error = null; });
+    try {
+      final identity  = ref.read(identityServiceProvider);
+      final myUserId  = identity.currentUserId ?? '';
+      final rooms     = ref.read(roomServiceProvider);
+
+      // 1. Fetch our player UUID and the initial game state.
+      final myPlayerId = await rooms.getMyPlayerAssignment(_roomId!, myUserId);
+      final gameState  = await rooms.getInitialGameState(_roomId!);
+
+      // 2. Load mission definition.
+      final mission = await ref.read(missionByIdProvider(gameState.missionId).future);
+
+      // 3. Init notifier and bootstrap session from network state.
+      final enemyCatalog = await ref.read(enemyCatalogProvider.future);
+      final notifier = ref.read(gameSessionProvider.notifier);
+      notifier.init(enemyCatalog);
+      notifier.importBootstrap(gameState, mission);
+
+      // 4. Wire GameSyncService.
+      final syncService = GameSyncService(
+        roomId: _roomId!, isHost: false, myUserId: myUserId);
+      notifier.configureMp(syncService, isHost: false, myPlayerId: myPlayerId);
+
+      // 5. Store multiplayer context.
+      ref.read(multiplayerInfoProvider.notifier).state = MultiplayerInfo(
+        roomId: _roomId!, isHost: false, myPlayerId: myPlayerId);
+
+      if (mounted) context.go('/game');
+    } catch (e) {
+      setState(() { _error = e.toString(); _loading = false; });
+    }
   }
 
   Future<void> _leaveRoom() async {
     if (_roomId != null) {
       await ref.read(roomServiceProvider).leaveRoom(_roomId!);
     }
-    setState(() { _roomId = null; _isHost = false; });
+    ref.read(multiplayerInfoProvider.notifier).state = null;
+    setState(() {
+      _roomId = null;
+      _isHost = false;
+      _selectedMissionId    = null;
+      _selectedMissionTitle = null;
+    });
   }
 
   // ── Build ────────────────────────────────────────────────────────────────
@@ -298,11 +423,10 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen>
   Widget _buildRoom() {
     final playersAsync = ref.watch(_playersStreamProvider(_roomId!));
 
-    // Navigate to game when host starts.
+    // Navigate when game starts. Host already navigated directly; clients bootstrap here.
     ref.listen(_roomStatusProvider(_roomId!), (_, status) {
-      if (status.valueOrNull == 'playing' && context.mounted) {
-        // Phase 2: wire MultiplayerSessionNotifier before navigating.
-        context.go('/game');
+      if (status.valueOrNull == 'playing' && context.mounted && !_isHost) {
+        _clientBootstrap();
       }
     });
 
@@ -377,12 +501,13 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen>
               .where((p) => p.userId != myUid && p.operatorId != null)
               .map((p) => p.operatorId!)
               .toSet();
-          final allReady = players.values.every((p) => p.operatorId != null);
+          final allOperatorsReady = players.values.every((p) => p.operatorId != null);
+          final allReady = allOperatorsReady && _selectedMissionId != null;
 
           return SafeArea(
             child: Column(
               children: [
-                // Player list
+                // Player list + operator draft + mission selector
                 Expanded(
                   child: ListView(
                     padding: const EdgeInsets.all(16),
@@ -409,9 +534,49 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen>
                           onTap:    taken ? null : () => _selectOperator(op.id),
                         );
                       })),
+                      const SizedBox(height: 24),
+                      // Mission selector (host only)
+                      if (_isHost) ...[
+                        _sectionLabel('MISSÃO'),
+                        const SizedBox(height: 8),
+                        _MissionPicker(
+                          selectedId:    _selectedMissionId,
+                          selectedTitle: _selectedMissionTitle,
+                          onPick: (id, title) => setState(() {
+                            _selectedMissionId    = id;
+                            _selectedMissionTitle = title;
+                          }),
+                        ),
+                      ] else ...[
+                        _sectionLabel('MISSÃO'),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0D0D1A),
+                            border: Border.all(color: const Color(0xFF1A1A2E)),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text(
+                            'Aguardando o host escolher a missão...',
+                            style: TextStyle(
+                              color: Color(0xFF444455),
+                              fontFamily: 'monospace',
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
+
+                // Loading overlay during game start
+                if (_loading)
+                  const LinearProgressIndicator(
+                    color: Color(0xFF00FF88),
+                    backgroundColor: Color(0xFF0D0D1A),
+                  ),
 
                 // Error
                 if (_error != null)
@@ -434,29 +599,33 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen>
                           width: double.infinity,
                           child: ElevatedButton(
                             style: _btnStyle(
-                              allReady
+                              allReady && !_loading
                                   ? const Color(0xFF00FF88)
                                   : const Color(0xFF333333),
                             ),
-                            onPressed: allReady
+                            onPressed: (allReady && !_loading)
                                 ? () => _startGame(players)
                                 : null,
                             child: Text(
-                              allReady
-                                  ? 'INICIAR MISSÃO'
-                                  : 'AGUARDANDO JOGADORES...',
+                              _loading
+                                  ? 'INICIANDO...'
+                                  : allReady
+                                      ? 'INICIAR MISSÃO'
+                                      : 'AGUARDANDO...',
                               style: TextStyle(
                                 fontFamily: 'monospace',
                                 fontWeight: FontWeight.bold,
-                                color: allReady ? Colors.black : const Color(0xFF555566),
+                                color: (allReady && !_loading)
+                                    ? Colors.black
+                                    : const Color(0xFF555566),
                               ),
                             ),
                           ),
                         )
                       : Center(
                           child: Text(
-                            _isHost
-                                ? ''
+                            _loading
+                                ? 'Iniciando missão...'
                                 : 'Aguardando o host iniciar a missão...',
                             style: const TextStyle(
                               color: Color(0xFF555566),
@@ -774,6 +943,172 @@ class _OperatorTile extends StatelessWidget {
                 const _Chip('OCUPADO', Color(0xFF555566)),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Mission Picker ────────────────────────────────────────────────────────────
+
+class _MissionPicker extends ConsumerWidget {
+  final String? selectedId;
+  final String? selectedTitle;
+  final void Function(String id, String title) onPick;
+
+  const _MissionPicker({
+    required this.selectedId,
+    required this.selectedTitle,
+    required this.onPick,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final missionsAsync = ref.watch(_allMissionsProvider);
+
+    return missionsAsync.when(
+      loading: () => const SizedBox(
+        height: 40,
+        child: Center(
+          child: SizedBox(
+            width: 16, height: 16,
+            child: CircularProgressIndicator(
+              strokeWidth: 1.5, color: Color(0xFF00FF88)),
+          ),
+        ),
+      ),
+      error: (e, _) => Text('Erro: $e',
+          style: const TextStyle(color: Colors.red, fontFamily: 'monospace')),
+      data: (missions) {
+        if (selectedId != null) {
+          return GestureDetector(
+            onTap: () => _showPicker(context, missions),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0D1A0D),
+                border: Border.all(
+                    color: const Color(0xFF00FF88).withValues(alpha: 0.4)),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.map_outlined,
+                      color: Color(0xFF00FF88), size: 18),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      selectedTitle ?? selectedId!,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontFamily: 'monospace',
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                  const Icon(Icons.edit_outlined,
+                      color: Color(0xFF444455), size: 14),
+                ],
+              ),
+            ),
+          );
+        }
+        return GestureDetector(
+          onTap: () => _showPicker(context, missions),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0D0D1A),
+              border: Border.all(
+                  color: const Color(0xFF00FF88).withValues(alpha: 0.25)),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.add_circle_outline,
+                    color: Color(0xFF00FF88), size: 18),
+                SizedBox(width: 10),
+                Text('Escolher missão',
+                    style: TextStyle(
+                      color: Color(0xFF00FF88),
+                      fontFamily: 'monospace',
+                      fontSize: 13,
+                    )),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showPicker(
+    BuildContext context,
+    List<(CampaignDefinition, MissionDefinition)> missions,
+  ) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF0D0D1A),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+      ),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text(
+                'ESCOLHER MISSÃO',
+                style: TextStyle(
+                  color: Color(0xFF00FF88),
+                  fontFamily: 'monospace',
+                  fontSize: 12,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ),
+            const Divider(color: Color(0xFF1A1A2E), height: 1),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: missions.length,
+                itemBuilder: (_, i) {
+                  final (campaign, mission) = missions[i];
+                  final isSelected = mission.id == selectedId;
+                  return ListTile(
+                    tileColor: isSelected ? const Color(0xFF0D1A0D) : null,
+                    title: Text(
+                      mission.title,
+                      style: TextStyle(
+                        color: isSelected
+                            ? const Color(0xFF00FF88)
+                            : Colors.white,
+                        fontFamily: 'monospace',
+                        fontSize: 13,
+                      ),
+                    ),
+                    subtitle: Text(
+                      campaign.title,
+                      style: const TextStyle(
+                        color: Color(0xFF444455),
+                        fontFamily: 'monospace',
+                        fontSize: 11,
+                      ),
+                    ),
+                    trailing: isSelected
+                        ? const Icon(Icons.check_circle,
+                            color: Color(0xFF00FF88), size: 18)
+                        : null,
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      onPick(mission.id, mission.title);
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
@@ -19,6 +21,7 @@ import '../rules/turn_manager.dart';
 import '../engine/enemy_turn_script.dart';
 import '../engine/mission_logger.dart';
 import '../../data/enemy_catalog.dart';
+import '../../data/game_sync_service.dart';
 import '../../data/map_loader.dart';
 import '../../data/weapon_catalog.dart';
 import '../../data/asset_loader.dart';
@@ -76,9 +79,14 @@ class SessionState {
 }
 
 class GameSessionNotifier extends Notifier<SessionState?> {
-  EnemyCatalog?  _enemyCatalog;
-  WeaponCatalog? _weaponCatalog;
-  TurnManager?   _turnManager;
+  EnemyCatalog?   _enemyCatalog;
+  WeaponCatalog?  _weaponCatalog;
+  TurnManager?    _turnManager;
+
+  // ── Multiplayer fields ────────────────────────────────────────────────────
+  GameSyncService? _syncService;
+  bool             _isHostMp  = true;
+  String?          _myPlayerId; // this device's player UUID in GameState
 
   @override
   SessionState? build() => null;
@@ -200,25 +208,171 @@ class GameSessionNotifier extends Notifier<SessionState?> {
     state = SessionState(game: ctx.toGameState(), mission: mission, isLoaded: true);
   }
 
-  void endSession() => state = null;
+  void endSession() {
+    _syncService = null;
+    _isHostMp = true;
+    _myPlayerId = null;
+    state = null;
+  }
+
+  // ---- Multiplayer ----
+
+  /// Configure this notifier for a networked game.
+  /// [isHost]: runs TurnManager locally and broadcasts to RTDB.
+  /// [myPlayerId]: this device's player UUID inside GameState.
+  void configureMp(
+    GameSyncService service, {
+    required bool isHost,
+    required String myPlayerId,
+  }) {
+    _syncService = service;
+    _isHostMp    = isHost;
+    _myPlayerId  = myPlayerId;
+
+    if (isHost) {
+      // Listen for client action submissions and execute them locally.
+      final sub = service.pendingActionStream.listen((action) {
+        _dispatchNetworkAction(action.type, action.payload);
+        unawaited(service.clearPendingAction());
+      });
+      ref.onDispose(sub.cancel);
+    } else {
+      // Drive local state from host broadcasts.
+      final stateSub = service.gameStateStream.listen(_importState);
+      final cinematicSub = service.cinematicStream.listen(_importCinematic);
+      final lootSub = service.pendingLootStream.listen((loot) {
+        if (loot != null) _importPendingLoot(loot.lootId, loot.playerId);
+      });
+      ref.onDispose(() {
+        stateSub.cancel();
+        cinematicSub.cancel();
+        lootSub.cancel();
+      });
+    }
+  }
+
+  /// Bootstraps a client session from an already-started GameState
+  /// (received from the host via RTDB). Does not reset TurnManager.
+  void importBootstrap(GameState gameState, MissionDefinition mission) {
+    _turnManager?.setMission(mission);
+    _loadMapForAI(mission);
+    state = SessionState(game: gameState, mission: mission, isLoaded: true);
+  }
+
+  void _importState(GameState newGame) {
+    final s = state;
+    if (s == null) return;
+    state = s.copyWith(game: newGame, clearCinematic: true, clearPendingLoot: true);
+  }
+
+  void _importCinematic(EnemyTurnScript script) {
+    final s = state;
+    if (s == null) return;
+    state = s.copyWith(cinematicScript: script);
+  }
+
+  void _importPendingLoot(String lootId, String playerId) {
+    final s = state;
+    if (s == null) return;
+    state = s.copyWith(pendingLootId: lootId, pendingLootPlayerId: playerId);
+  }
+
+  /// Route an action received from a client via RTDB.
+  void _dispatchNetworkAction(String type, Map<String, dynamic> payload) {
+    switch (type) {
+      case 'move':
+        movePlayer(payload['playerId'] as String, payload['zoneId'] as String);
+      case 'attack':
+        attackZone(
+          payload['playerId'] as String,
+          payload['weaponId'] as String,
+          payload['zoneId'] as String,
+        );
+      case 'openDoor':
+        openDoor(
+          payload['playerId'] as String,
+          payload['fromZoneId'] as String,
+          payload['toZoneId'] as String,
+        );
+      case 'search':
+        search(payload['playerId'] as String, payload['objectiveId'] as String?);
+      case 'endTurn':
+        endPlayerTurn();
+      case 'placeLoot':
+        placeLoot(payload['slot'] as String);
+      case 'discardLoot':
+        discardLoot();
+      case 'trade':
+        tradeItem(
+          payload['fromId'] as String,
+          payload['toId'] as String,
+          payload['itemId'] as String,
+        );
+      case 'equipItem':
+        equipItem(
+          payload['playerId'] as String,
+          payload['itemId'] as String,
+          toLeft: (payload['toLeft'] as bool?) ?? true,
+        );
+      case 'trap':
+        placeTrap(payload['playerId'] as String);
+      case 'heal':
+        healAlly(payload['healerId'] as String, payload['targetId'] as String);
+      case 'areaHeal':
+        areaHealAlly(payload['healerId'] as String);
+    }
+  }
+
+  /// Submit an action to the host via RTDB (non-host only).
+  void _submitAction(String type, Map<String, dynamic> payload) {
+    unawaited(_syncService!.submitAction(type, payload));
+  }
+
+  /// Broadcast game state to clients after a mutation (host only).
+  void _broadcastIfHost() {
+    if (_syncService == null || !_isHostMp) return;
+    final s = state;
+    if (s == null) return;
+    unawaited(_syncService!.broadcastFull(
+      gameState: s.game,
+      cinematic: s.cinematicScript,
+      pendingLoot: s.pendingLootId != null && s.pendingLootPlayerId != null
+          ? (lootId: s.pendingLootId!, playerId: s.pendingLootPlayerId!)
+          : null,
+    ));
+  }
 
   // ---- Player actions ----
 
   void movePlayer(String playerId, String zoneId) {
+    if (_syncService != null && !_isHostMp) {
+      if (state?.game.activePlayerId == _myPlayerId) {
+        _submitAction('move', {'playerId': playerId, 'zoneId': zoneId});
+      }
+      return;
+    }
     final s = _requireSession();
     final player = s.game.players.firstWhere((p) => p.playerId == playerId);
     if (!_turnManager!.canMove(player)) return;
     final newGame = _turnManager!.movePlayer(s.game, playerId, zoneId);
     state = s.copyWith(game: newGame);
+    _broadcastIfHost();
     _triggerHint('first_move');
   }
 
   /// Zombicide zone attack — targets all actors in [targetZoneId] by priority.
   void attackZone(String playerId, String weaponId, String targetZoneId) {
+    if (_syncService != null && !_isHostMp) {
+      if (state?.game.activePlayerId == _myPlayerId) {
+        _submitAction('attack', {'playerId': playerId, 'weaponId': weaponId, 'zoneId': targetZoneId});
+      }
+      return;
+    }
     final s      = _requireSession();
     final weapon = _weaponCatalog?.getById(weaponId) ?? WeaponDefinition.fists;
     final result = _turnManager!.attackZone(s.game, playerId, weapon, targetZoneId);
     state = s.copyWith(game: result.state);
+    _broadcastIfHost();
     _triggerHint('first_attack');
   }
 
@@ -236,13 +390,26 @@ class GameSessionNotifier extends Notifier<SessionState?> {
   }
 
   void openDoor(String playerId, String fromZoneId, String toZoneId) {
+    if (_syncService != null && !_isHostMp) {
+      if (state?.game.activePlayerId == _myPlayerId) {
+        _submitAction('openDoor', {'playerId': playerId, 'fromZoneId': fromZoneId, 'toZoneId': toZoneId});
+      }
+      return;
+    }
     final s = _requireSession();
     final newGame = _turnManager!.openDoor(s.game, playerId, fromZoneId, toZoneId);
     state = s.copyWith(game: newGame);
+    _broadcastIfHost();
     _triggerHint('first_open_door');
   }
 
   void search(String playerId, String? objectiveId) {
+    if (_syncService != null && !_isHostMp) {
+      if (state?.game.activePlayerId == _myPlayerId) {
+        _submitAction('search', {'playerId': playerId, 'objectiveId': objectiveId});
+      }
+      return;
+    }
     final s = _requireSession();
     final result = _turnManager!.search(s.game, playerId, objectiveId);
     if (result.pendingLootId != null) {
@@ -254,25 +421,36 @@ class GameSessionNotifier extends Notifier<SessionState?> {
     } else {
       state = s.copyWith(game: result.state);
     }
+    _broadcastIfHost();
     _triggerHint('first_search');
   }
 
   /// Place the pending loot item into the chosen slot and clear the pending state.
   /// [slot]: 'left' | 'right' | 'backpack'
   void placeLoot(String slot) {
+    if (_syncService != null && !_isHostMp) {
+      _submitAction('placeLoot', {'slot': slot});
+      return;
+    }
     final s = _requireSession();
     final lootId   = s.pendingLootId;
     final playerId = s.pendingLootPlayerId;
     if (lootId == null || playerId == null) return;
     final newGame = _turnManager!.placeLoot(s.game, playerId, lootId, slot);
     state = s.copyWith(game: newGame, clearPendingLoot: true);
+    _broadcastIfHost();
   }
 
   /// Discard the pending loot without placing it anywhere.
   void discardLoot() {
+    if (_syncService != null && !_isHostMp) {
+      _submitAction('discardLoot', {});
+      return;
+    }
     final s = _requireSession();
     if (s.pendingLootId == null) return;
     state = s.copyWith(clearPendingLoot: true);
+    _broadcastIfHost();
   }
 
   void interact(String playerId, String objectiveId) => search(playerId, objectiveId);
@@ -288,9 +466,16 @@ class GameSessionNotifier extends Notifier<SessionState?> {
   }
 
   void tradeItem(String fromPlayerId, String toPlayerId, String itemId) {
+    if (_syncService != null && !_isHostMp) {
+      if (state?.game.activePlayerId == _myPlayerId) {
+        _submitAction('trade', {'fromId': fromPlayerId, 'toId': toPlayerId, 'itemId': itemId});
+      }
+      return;
+    }
     final s = _requireSession();
     final newGame = _turnManager!.tradeItem(s.game, fromPlayerId, toPlayerId, itemId);
     state = s.copyWith(game: newGame);
+    _broadcastIfHost();
     _triggerHint('first_trade');
   }
 
@@ -303,9 +488,16 @@ class GameSessionNotifier extends Notifier<SessionState?> {
   }
 
   void placeTrap(String playerId) {
+    if (_syncService != null && !_isHostMp) {
+      if (state?.game.activePlayerId == _myPlayerId) {
+        _submitAction('trap', {'playerId': playerId});
+      }
+      return;
+    }
     final s = _requireSession();
     final newGame = _turnManager!.placeTrap(s.game, playerId);
     state = s.copyWith(game: newGame);
+    _broadcastIfHost();
   }
 
   bool canHealAlly(String healerId, String targetId) {
@@ -318,9 +510,16 @@ class GameSessionNotifier extends Notifier<SessionState?> {
   }
 
   void healAlly(String healerId, String targetId) {
+    if (_syncService != null && !_isHostMp) {
+      if (state?.game.activePlayerId == _myPlayerId) {
+        _submitAction('heal', {'healerId': healerId, 'targetId': targetId});
+      }
+      return;
+    }
     final s = _requireSession();
     final newGame = _turnManager!.healAlly(s.game, healerId, targetId);
     state = s.copyWith(game: newGame);
+    _broadcastIfHost();
   }
 
   bool canAreaHealAlly(String healerId) {
@@ -332,24 +531,33 @@ class GameSessionNotifier extends Notifier<SessionState?> {
   }
 
   void areaHealAlly(String healerId) {
+    if (_syncService != null && !_isHostMp) {
+      if (state?.game.activePlayerId == _myPlayerId) {
+        _submitAction('areaHeal', {'healerId': healerId});
+      }
+      return;
+    }
     final s = _requireSession();
     final newGame = _turnManager!.areaHealAlly(s.game, healerId);
     state = s.copyWith(game: newGame);
+    _broadcastIfHost();
   }
 
   /// Equip item from backpack to hand slot. Costs 1 action.
   void equipItem(String playerId, String itemId, {bool toLeft = true}) {
+    if (_syncService != null && !_isHostMp) {
+      if (state?.game.activePlayerId == _myPlayerId) {
+        _submitAction('equipItem', {'playerId': playerId, 'itemId': itemId, 'toLeft': toLeft});
+      }
+      return;
+    }
     final s   = _requireSession();
     final idx = s.game.players.indexWhere((p) => p.playerId == playerId);
     if (idx == -1) return;
     final p = s.game.players[idx];
     if (p.actionsRemaining <= 0) return;
 
-    // Move item: remove from backpack (if it's there), put in hand.
-    // If already in a hand slot, just swap.
     final bp = List<String>.from(p.backpack)..remove(itemId);
-
-    // What was in the target hand goes to backpack.
     final displaced = toLeft ? p.equippedLeft : p.equippedRight;
     if (displaced != null && displaced != itemId) bp.add(displaced);
 
@@ -363,9 +571,16 @@ class GameSessionNotifier extends Notifier<SessionState?> {
       players: players,
       eventLog: [...s.game.eventLog, log].takeLast(20).toList(),
     ));
+    _broadcastIfHost();
   }
 
   void endPlayerTurn() {
+    if (_syncService != null && !_isHostMp) {
+      if (state?.game.activePlayerId == _myPlayerId) {
+        _submitAction('endTurn', {});
+      }
+      return;
+    }
     final s = _requireSession();
     final enemiesBeforePhase = s.game.enemies.length;
     final result = _turnManager!.endPlayerTurn(s.game);
@@ -373,8 +588,6 @@ class GameSessionNotifier extends Notifier<SessionState?> {
     final script = result.script;
 
     // beginNextRound only when the enemy/alert phase actually ran.
-    // For mid-rotation turns (enemyPhaseRan=false), activePlayerId was already
-    // advanced inside endPlayerTurn and must not be reset.
     if (result.enemyPhaseRan && newGame.outcome == GameOutcome.none) {
       newGame = _turnManager!.beginNextRound(newGame, s.mission);
     }
@@ -383,6 +596,8 @@ class GameSessionNotifier extends Notifier<SessionState?> {
       game: newGame,
       cinematicScript: script.isEmpty ? null : script,
     );
+
+    _broadcastIfHost();
 
     if (result.enemyPhaseRan) {
       _triggerHint('first_enemy_phase');

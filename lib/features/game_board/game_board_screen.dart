@@ -8,6 +8,7 @@ import '../../core/engine/game_session_notifier.dart';
 import '../../core/models/game_state.dart';
 import '../../core/models/player.dart';
 import '../../core/models/skill.dart';
+import '../../data/providers.dart';
 import 'game_board_game.dart';
 import 'board_hud.dart';
 import 'enemy_cinematic_overlay.dart';
@@ -102,11 +103,14 @@ class _GameBoardScreenState extends ConsumerState<GameBoardScreen> {
       }
 
       // Pass & Play: show hand-off modal when the active player changes.
+      // Suppressed in networked multiplayer (each device = one player).
+      final mpInfo = ref.read(multiplayerInfoProvider);
       final currId = next.game.activePlayerId;
       final aliveCount =
           next.game.players.where((p) => !p.isEliminated).length;
 
-      if (aliveCount > 1 &&
+      if (mpInfo == null && // solo / pass & play only
+          aliveCount > 1 &&
           currId != _lastActivePlayerId &&
           next.game.phase == GamePhase.playerTurn) {
         PlayerState? incoming;
@@ -157,13 +161,54 @@ class _GameBoardScreenState extends ConsumerState<GameBoardScreen> {
       if (outcome != GameOutcome.none && context.mounted) context.go('/result');
     });
 
-    final pendingHint = ref.watch(pendingHintProvider);
+    final pendingHint  = ref.watch(pendingHintProvider);
+    final mpInfo       = ref.watch(multiplayerInfoProvider);
+    final activePlayer = ref.watch(activePlayerProvider);
+    final isMyTurn = mpInfo == null ||
+        session.game.activePlayerId == mpInfo.myPlayerId;
 
     return Scaffold(
       body: Stack(
         children: [
           if (_game != null) GameWidget(game: _game!),
           if (_game != null) SafeArea(child: BoardHud(game: _game!)),
+
+          // Multiplayer: "waiting for X" banner when it's not this device's turn.
+          if (mpInfo != null && !isMyTurn && _activeCinematic == null)
+            Positioned(
+              top: 0, left: 0, right: 0,
+              child: SafeArea(
+                bottom: false,
+                child: Container(
+                  margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0D0D1A).withValues(alpha: 0.92),
+                    border: Border.all(color: const Color(0xFF333344)),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(
+                        width: 12, height: 12,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 1.5, color: Color(0xFF00AAFF)),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Turno de ${activePlayer?.definitionId ?? '...'}',
+                        style: const TextStyle(
+                          color: Color(0xFF00AAFF),
+                          fontFamily: 'monospace',
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
 
           // Tutorial hint modal — shown above HUD, below cinematic.
           if (pendingHint != null && _activeCinematic == null)

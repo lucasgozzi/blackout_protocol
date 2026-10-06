@@ -97,4 +97,85 @@ class EnemyTurnScript {
   const EnemyTurnScript(this.steps);
 
   bool get isEmpty => steps.isEmpty;
+
+  Map<String, dynamic> toJson() => {
+    'steps': steps.map(_stepToJson).toList(),
+  };
+
+  factory EnemyTurnScript.fromJson(Map<String, dynamic> json) {
+    final steps = (json['steps'] as List)
+        .map((s) => _stepFromJson(Map<String, dynamic>.from(s as Map)))
+        .toList();
+    return EnemyTurnScript(steps);
+  }
+
+  static Map<String, dynamic> _stepToJson(EnemyTurnStep step) => switch (step) {
+    SpawnStep s => {
+      'type': 'spawn', 'zoneId': s.zoneId, 'zoneName': s.zoneName,
+      'enemyId': s.enemyId, 'enemyName': s.enemyName,
+      'tier': s.tier.name, 'count': s.count,
+    },
+    EnemyGroupMoveStep s => {
+      'type': 'groupMove', 'definitionId': s.definitionId,
+      'enemyName': s.enemyName, 'tier': s.tier.name,
+      'moves': s.moves.map((m) => {
+        'instanceId': m.instanceId, 'definitionId': m.definitionId,
+        'enemyName': m.enemyName, 'tier': m.tier.name,
+        'fromZoneId': m.fromZoneId, 'toZoneId': m.toZoneId,
+      }).toList(),
+    },
+    EnemyMoveStep s => {
+      'type': 'enemyMove', 'instanceId': s.instanceId,
+      'definitionId': s.definitionId, 'enemyName': s.enemyName,
+      'tier': s.tier.name, 'fromZoneId': s.fromZoneId, 'toZoneId': s.toZoneId,
+    },
+    EnemyAttackStep s => {
+      'type': 'attack', 'instanceId': s.instanceId,
+      'definitionId': s.definitionId, 'enemyName': s.enemyName,
+      'tier': s.tier.name, 'zoneId': s.zoneId,
+      'targetPlayerId': s.targetPlayerId, 'targetName': s.targetName,
+      'playerWounded': s.playerWounded, 'playerEliminated': s.playerEliminated,
+    },
+  };
+
+  static EnemyTurnStep _stepFromJson(Map<String, dynamic> m) {
+    EnemyTier tier() => EnemyTier.values.firstWhere(
+        (t) => t.name == m['tier'], orElse: () => EnemyTier.walker);
+    return switch (m['type'] as String) {
+      'spawn' => SpawnStep(
+          zoneId: m['zoneId'] as String, zoneName: m['zoneName'] as String,
+          enemyId: m['enemyId'] as String, enemyName: m['enemyName'] as String,
+          tier: tier(), count: m['count'] as int),
+      'groupMove' => EnemyGroupMoveStep(
+          definitionId: m['definitionId'] as String,
+          enemyName: m['enemyName'] as String, tier: tier(),
+          moves: (m['moves'] as List).map((mv) {
+            final mm = Map<String, dynamic>.from(mv as Map);
+            final t = EnemyTier.values.firstWhere(
+                (t) => t.name == mm['tier'], orElse: () => EnemyTier.walker);
+            return EnemyMoveStep(
+              instanceId: mm['instanceId'] as String,
+              definitionId: mm['definitionId'] as String,
+              enemyName: mm['enemyName'] as String, tier: t,
+              fromZoneId: mm['fromZoneId'] as String,
+              toZoneId: mm['toZoneId'] as String,
+            );
+          }).toList()),
+      'enemyMove' => EnemyMoveStep(
+          instanceId: m['instanceId'] as String,
+          definitionId: m['definitionId'] as String,
+          enemyName: m['enemyName'] as String, tier: tier(),
+          fromZoneId: m['fromZoneId'] as String, toZoneId: m['toZoneId'] as String),
+      'attack' => EnemyAttackStep(
+          instanceId: m['instanceId'] as String,
+          definitionId: m['definitionId'] as String,
+          enemyName: m['enemyName'] as String, tier: tier(),
+          zoneId: m['zoneId'] as String,
+          targetPlayerId: m['targetPlayerId'] as String,
+          targetName: m['targetName'] as String,
+          playerWounded: m['playerWounded'] as bool,
+          playerEliminated: m['playerEliminated'] as bool? ?? false),
+      _ => throw ArgumentError('Unknown step type: ${m["type"]}'),
+    };
+  }
 }

@@ -7,6 +7,7 @@ import 'asset_loader.dart';
 import 'campaign_repository.dart';
 import 'enemy_catalog.dart';
 import 'identity_service.dart';
+import 'multiplayer_info.dart';
 import 'player_catalog.dart';
 import 'progress_repository.dart';
 import 'room_service.dart';
@@ -80,6 +81,9 @@ final identityServiceProvider = Provider<PlayerIdentityService>(
 final roomServiceProvider = Provider<RoomService>(
   (ref) => RoomService(identity: ref.read(identityServiceProvider)),
 );
+
+/// Non-null while a networked game is in progress; null for solo play.
+final multiplayerInfoProvider = StateProvider<MultiplayerInfo?>((ref) => null);
 
 // ---- Progress / mission unlock ----
 
