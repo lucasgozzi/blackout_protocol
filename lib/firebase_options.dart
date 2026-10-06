@@ -26,10 +26,7 @@ class DefaultFirebaseOptions {
       case TargetPlatform.android:
         return android;
       case TargetPlatform.iOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for ios - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return ios;
       case TargetPlatform.macOS:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for macos - '
@@ -51,6 +48,16 @@ class DefaultFirebaseOptions {
         );
     }
   }
+
+  static const FirebaseOptions ios = FirebaseOptions(
+    apiKey: 'AIzaSyAEtVwwbbgJHG1WhoYhWCqcMfN9X_XDTdk',
+    appId: '1:16740872401:ios:62c7cb66c683b4ab5a95f0',
+    messagingSenderId: '16740872401',
+    projectId: 'blackout-protocol-2473e',
+    databaseURL: 'https://blackout-protocol-2473e-default-rtdb.firebaseio.com',
+    storageBucket: 'blackout-protocol-2473e.firebasestorage.app',
+    iosBundleId: 'com.example.blackoutProtocol',
+  );
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyCHGP0m0WaIrvwS3SFiJZkvR7cOpbfmgHE',

@@ -4,17 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import 'core/engine/game_context.dart';
-import 'core/engine/game_session_notifier.dart';
-import 'core/models/game_state.dart';
-import 'data/providers.dart';
 import 'firebase_options.dart';
-import 'features/dev_launcher/dev_launcher_screen.dart';
 import 'features/splash/splash_screen.dart';
 import 'features/campaign_select/campaign_select_screen.dart';
 import 'features/mission_select/mission_select_screen.dart';
 import 'features/operator_select/operator_select_screen.dart';
 import 'features/game_board/game_board_screen.dart';
+import 'features/home/home_screen.dart';
 import 'features/lobby/lobby_screen.dart';
 import 'features/result/result_screen.dart';
 
@@ -54,6 +50,10 @@ class BlackoutApp extends ConsumerWidget {
           builder: (_, __) => const SplashScreen(),
         ),
         GoRoute(
+          path: '/home',
+          builder: (_, __) => const HomeScreen(),
+        ),
+        GoRoute(
           path: '/campaigns',
           builder: (_, __) => const CampaignSelectScreen(),
         ),
@@ -84,18 +84,6 @@ class BlackoutApp extends ConsumerWidget {
         ),
       ],
     );
-  }
-
-  Future<void> _launchContext(GameContext ctx, BuildContext context, WidgetRef ref) async {
-    final enemyCatalog = await ref.read(enemyCatalogProvider.future);
-    final repo = await ref.read(campaignRepositoryProvider.future);
-    final mission = repo.getMissionById(ctx.missionId);
-
-    final notifier = ref.read(gameSessionProvider.notifier);
-    notifier.init(enemyCatalog);
-    notifier.loadContext(ctx, mission);
-
-    if (context.mounted) context.go('/game');
   }
 
   ThemeData _buildTheme() {

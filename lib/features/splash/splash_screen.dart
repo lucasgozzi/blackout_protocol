@@ -20,7 +20,7 @@ class _SplashScreenState extends State<SplashScreen>
     _fade = CurvedAnimation(parent: _ctrl, curve: Curves.easeIn);
     _ctrl.forward();
     Future.delayed(const Duration(milliseconds: 2800), () {
-      if (mounted) context.go('/campaigns');
+      if (mounted) context.go('/home');
     });
   }
 
