@@ -12,6 +12,7 @@ import 'game_board_game.dart';
 import 'board_hud.dart';
 import 'enemy_cinematic_overlay.dart';
 import 'level_up_overlay.dart';
+import 'pass_device_overlay.dart';
 import 'tutorial_hint_overlay.dart';
 
 class GameBoardScreen extends ConsumerStatefulWidget {
@@ -29,6 +30,11 @@ class _GameBoardScreenState extends ConsumerState<GameBoardScreen> {
   // Tracks last-known danger levels to detect transitions.
   final Map<String, DangerLevel> _knownLevels = {};
 
+  // Pass & Play: tracks the last active player to detect turn transitions.
+  String?      _lastActivePlayerId;
+  PlayerState? _pendingPassDevice; // queued until cinematic finishes
+  PlayerState? _passDevicePlayer;  // currently showing the hand-off modal
+
   @override
   void initState() {
     super.initState();
@@ -38,6 +44,8 @@ class _GameBoardScreenState extends ConsumerState<GameBoardScreen> {
   void _initGame() {
     final session  = ref.read(gameSessionProvider);
     if (session == null) return;
+    // Seed so the first turn never triggers the hand-off modal.
+    _lastActivePlayerId = session.game.activePlayerId;
     final notifier = ref.read(gameSessionProvider.notifier);
 
     final game = GameBoardGame(
@@ -69,9 +77,11 @@ class _GameBoardScreenState extends ConsumerState<GameBoardScreen> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    // Detect level-up transitions.
+    // Detect level-up transitions and pass-device hand-offs.
     ref.listen(gameSessionProvider, (prev, next) {
       if (prev == null || next == null) return;
+
+      // Level-up detection.
       for (final player in next.game.players) {
         final prevLevel = _knownLevels[player.playerId];
         final currLevel = player.dangerLevel;
@@ -90,6 +100,37 @@ class _GameBoardScreenState extends ConsumerState<GameBoardScreen> {
         }
         _knownLevels[player.playerId] = currLevel;
       }
+
+      // Pass & Play: show hand-off modal when the active player changes.
+      final currId = next.game.activePlayerId;
+      final aliveCount =
+          next.game.players.where((p) => !p.isEliminated).length;
+
+      if (aliveCount > 1 &&
+          currId != _lastActivePlayerId &&
+          next.game.phase == GamePhase.playerTurn) {
+        PlayerState? incoming;
+        for (final p in next.game.players) {
+          if (p.playerId == currId && !p.isEliminated) {
+            incoming = p;
+            break;
+          }
+        }
+        if (incoming != null) {
+          // If a cinematic is about to play (or already running), defer
+          // the modal until onComplete so it doesn't interrupt the animation.
+          final hasCinematic = next.cinematicScript != null;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            if (hasCinematic || _activeCinematic != null) {
+              setState(() => _pendingPassDevice = incoming);
+            } else {
+              setState(() => _passDevicePlayer = incoming);
+            }
+          });
+        }
+      }
+      _lastActivePlayerId = currId;
     });
 
     // Trigger cinematic when a new script arrives.
@@ -142,7 +183,15 @@ class _GameBoardScreenState extends ConsumerState<GameBoardScreen> {
                 script: _activeCinematic!,
                 game:   _game!,
                 onComplete: () {
-                  setState(() => _activeCinematic = null);
+                  setState(() {
+                    _activeCinematic = null;
+                    // Flush any queued pass-device modal now that the
+                    // cinematic is done.
+                    if (_pendingPassDevice != null) {
+                      _passDevicePlayer = _pendingPassDevice;
+                      _pendingPassDevice = null;
+                    }
+                  });
                   // Pan to the active player now that it's their turn.
                   final s = ref.read(gameSessionProvider);
                   final g = _game;
@@ -157,6 +206,13 @@ class _GameBoardScreenState extends ConsumerState<GameBoardScreen> {
                   }
                 },
               ),
+            ),
+
+          // Pass & Play hand-off — shown above everything after each turn.
+          if (_passDevicePlayer != null)
+            PassDeviceOverlay(
+              player:  _passDevicePlayer!,
+              onReady: () => setState(() => _passDevicePlayer = null),
             ),
         ],
       ),
