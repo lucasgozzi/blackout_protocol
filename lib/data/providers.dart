@@ -6,8 +6,10 @@ import '../core/models/player.dart';
 import 'asset_loader.dart';
 import 'campaign_repository.dart';
 import 'enemy_catalog.dart';
+import 'identity_service.dart';
 import 'player_catalog.dart';
 import 'progress_repository.dart';
+import 'room_service.dart';
 
 // ---- Infrastructure ----
 
@@ -68,6 +70,16 @@ final playerDefinitionProvider =
   final catalog = await ref.watch(playerCatalogProvider.future);
   return catalog.getById(playerId);
 });
+
+// ---- Multiplayer / identity ----
+
+final identityServiceProvider = Provider<PlayerIdentityService>(
+  (_) => PlayerIdentityService(),
+);
+
+final roomServiceProvider = Provider<RoomService>(
+  (ref) => RoomService(identity: ref.read(identityServiceProvider)),
+);
 
 // ---- Progress / mission unlock ----
 

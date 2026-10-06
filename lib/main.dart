@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,15 +8,19 @@ import 'core/engine/game_context.dart';
 import 'core/engine/game_session_notifier.dart';
 import 'core/models/game_state.dart';
 import 'data/providers.dart';
+import 'firebase_options.dart';
 import 'features/dev_launcher/dev_launcher_screen.dart';
 import 'features/splash/splash_screen.dart';
 import 'features/campaign_select/campaign_select_screen.dart';
 import 'features/mission_select/mission_select_screen.dart';
 import 'features/operator_select/operator_select_screen.dart';
 import 'features/game_board/game_board_screen.dart';
+import 'features/lobby/lobby_screen.dart';
 import 'features/result/result_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const ProviderScope(child: BlackoutApp()));
 }
 
@@ -64,6 +69,10 @@ class BlackoutApp extends ConsumerWidget {
             campaignId: state.pathParameters['campaignId']!,
             missionId: state.pathParameters['missionId']!,
           ),
+        ),
+        GoRoute(
+          path: '/lobby',
+          builder: (_, __) => const LobbyScreen(),
         ),
         GoRoute(
           path: '/game',

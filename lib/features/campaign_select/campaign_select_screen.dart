@@ -20,6 +20,21 @@ class CampaignSelectScreen extends ConsumerWidget {
           'CAMPANHAS',
           style: TextStyle(color: Color(0xFF00FF88), fontFamily: 'monospace', letterSpacing: 3),
         ),
+        actions: [
+          TextButton.icon(
+            onPressed: () => context.push('/lobby'),
+            icon: const Icon(Icons.people_outline, color: Color(0xFF00AAFF), size: 18),
+            label: const Text(
+              'MULTI',
+              style: TextStyle(
+                color: Color(0xFF00AAFF),
+                fontFamily: 'monospace',
+                fontSize: 11,
+                letterSpacing: 0.1,
+              ),
+            ),
+          ),
+        ],
       ),
       body: campaignsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator(color: Color(0xFF00FF88))),
