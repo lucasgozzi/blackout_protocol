@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:firebase_database/firebase_database.dart';
 
@@ -28,7 +29,7 @@ class GameSyncService {
   // ── Host → clients ─────────────────────────────────────────────────────────
 
   Future<void> broadcastGameState(GameState state) =>
-      _root.child('game_state').set(state.toJson());
+      _root.child('game_state').set(_sanitize(state.toJson()));
 
   Future<void> clearCinematic() =>
       _root.child('cinematic').remove();
@@ -42,8 +43,8 @@ class GameSyncService {
     EnemyTurnScript? cinematic,
     ({String lootId, String playerId})? pendingLoot,
   }) async {
-    final updates = <String, dynamic>{'game_state': gameState.toJson()};
-    if (cinematic != null) updates['cinematic'] = cinematic.toJson();
+    final updates = <String, dynamic>{'game_state': _sanitize(gameState.toJson())};
+    if (cinematic != null) updates['cinematic'] = _sanitize(cinematic.toJson());
     if (pendingLoot != null) {
       updates['pending_loot'] = {
         'lootId': pendingLoot.lootId,
@@ -52,6 +53,15 @@ class GameSyncService {
     }
     await _root.update(updates);
   }
+
+  /// Converts a Freezed toJson() map into a fully-primitive tree.
+  ///
+  /// The generated _$$*ImplToJson functions don't call toJson() on nested
+  /// Freezed objects (missing explicitToJson: true). Running through
+  /// jsonEncode/jsonDecode forces the codec to call toJson() recursively on
+  /// every nested object, giving Firebase a plain Map/List/primitive tree.
+  static Map<String, dynamic> _sanitize(Map<String, dynamic> raw) =>
+      jsonDecode(jsonEncode(raw)) as Map<String, dynamic>;
 
   // ── Client → host ──────────────────────────────────────────────────────────
 

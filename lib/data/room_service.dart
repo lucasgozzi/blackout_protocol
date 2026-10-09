@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:firebase_database/firebase_database.dart';
@@ -168,7 +169,7 @@ class RoomService {
     final updates = <String, dynamic>{
       'meta/status':    'playing',
       'meta/missionId': missionId,
-      'game_state':     gameState.toJson(),
+      'game_state':     _sanitize(gameState.toJson()),
     };
     for (final e in assignments.entries) {
       updates['assignments/${e.key}'] = e.value;
@@ -192,11 +193,19 @@ class RoomService {
   Future<GameState> getInitialGameState(String roomId) async {
     final snap = await _roomRef(roomId).child('game_state').get();
     if (!snap.exists) throw Exception('No game state found.');
-    final raw = Map<String, dynamic>.from(snap.value as Map<Object?, Object?>);
+    // RTDB returns Map<Object?, Object?> at every level; jsonEncode/jsonDecode
+    // deep-converts to Map<String, dynamic> so fromJson casts succeed.
+    final raw = jsonDecode(jsonEncode(snap.value)) as Map<String, dynamic>;
     return GameState.fromJson(raw);
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────────
+
+  /// Converts a Freezed toJson() map to a fully-primitive tree before writing
+  /// to RTDB. Without this, nested Freezed objects (PlayerState, EnemyInstance)
+  /// are not serialized because the generated toJson() lacks explicitToJson.
+  static Map<String, dynamic> _sanitize(Map<String, dynamic> raw) =>
+      jsonDecode(jsonEncode(raw)) as Map<String, dynamic>;
 
   static String _generateCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
